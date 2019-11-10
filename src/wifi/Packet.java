@@ -10,7 +10,7 @@ import java.util.zip.CRC32;
  */
 public class Packet
 {
-    // TODO - control, how does this want to be implemented...
+    // TODO - control, how should this be implemented...
     private int control, CRC;
     short desAddr, scrAddr;
  
@@ -18,11 +18,12 @@ public class Packet
     
     
     byte[] packet;
+    byte[] data; // should we have this?
 
     boolean retry;
     int frameType, sequenceNum;
     //private long data; //check, if it can be an int
-    //ByteBuffer bb;
+    ByteBuffer bb = ByteBuffer.allocate(Long.BYTES);
 
     final int MaxPacketValue = 2 + 2 + 2 + 4 + 2038;
     final int OverHeadValues = 2 + 2 + 2 + 4;
@@ -167,15 +168,37 @@ public class Packet
     }
     
     /**
-     * 
+     * This method right now does not set the CRC, it just prints it out.
+     * Currently this methos does not work correctly.
+     * The numbers in the byte array does not equal crcSum.getValue
      */
     public void setCRC1() {
         //Based on CRC
         //Then call CRC once everything is done?
-        CRC32 okay = new CRC32();
+        CRC32 crcSum = new CRC32();
         //okay.update(packet, packet.length - 5, packet.length -1);
-        okay.update(packet, 0, packet.length-4);
-        System.out.println(okay.getValue());
+        crcSum.update(packet, 0, packet.length-4);
+        System.out.println("CRC value calculated: " + crcSum.getValue());
+        
+        bb = bb.allocate(Long.BYTES);   //allocates how much buffer can hold
+        //bb = bb.allocate(4); // Can't do gives overflow.
+        bb.putLong(crcSum.getValue());  //makes the checksum to a byte array using byte buffer
+        bb.flip();                      //set index to zero so easy to add to the array and read
+        System.out.println("bb.getLong: " + bb.getLong());
+        bb.flip();
+        //bb.putInt(1);
+        byte[] crcArray = bb.array();
+        //put into the 4;
+        
+        bb.clear();
+        System.out.println("In CRC");
+        for(byte b: crcArray) { // testing print out
+            System.out.println(b & 0xFF);
+        }
+        System.out.println();
+        
+        crcSum.reset();
+        //change to bytes to fit into 
     }
 
     /**
@@ -277,6 +300,7 @@ public class Packet
      *
      */
     public String toString() {
+        //System.out.println("Packet[4]: " + packet[packet.length-4] + " How much elements: " + (packet.length-4));
         String str = "[";
         for(byte B : packet) {
             str += (B & 0xFF) + ", ";
