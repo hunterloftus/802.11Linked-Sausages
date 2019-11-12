@@ -103,8 +103,11 @@ public class LinkLayer implements Dot11Interface, Runnable
 	private RF theRF;           // You'll need one of these eventually
 	private short ourMAC;       // Our MAC address
 	private PrintWriter output; // The output stream we'll write to
-	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(0);
-	private Queue<byte[]> sendQueue = new ArrayBlockingQueue<byte[]>(0); //make this a packet object
+	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(1000);
+	private Queue<Packet> sendQueue = new ArrayBlockingQueue<Packet>(1000); //make this a packet object
+	public static Queue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
+
+
 
 	/**
 	 * Constructor takes a MAC address and the PrintWriter to which our output will
@@ -120,33 +123,46 @@ public class LinkLayer implements Dot11Interface, Runnable
 		theRF = new RF(null, null);
 		output.println("LinkLayer: Constructor ran.");
 		//shoot of sender and receiver here
-		Receiver recv = new Receiver(theRF, ackQueue);
-		Sender sender = new Sender(theRF, ackQueue);
+		Receiver recv = new Receiver(theRF, ackQueue, DataQueue, ourMAC);
+		Sender sender = new Sender(theRF, ackQueue, sendQueue, ourMAC);
 		(new Thread(recv)).start();
-		System.exit(-1);
 		(new Thread(sender)).start();
 	}
 	
 	
 	
-	/*
-	 * 	public LinkLayer(short ourMAC, PrintWriter output) {
+
+		/*
+	 	public LinkLayer(short ourMAC, PrintWriter output) {
 		this.ourMAC = ourMAC;
 		this.output = output;      
 		theRF = new RF(null, null);
 		output.println("LinkLayer: Constructor ran.");
 	}
-	 * 
-	 */
+	*/
+	 
+	 
 
 	/**
 	 * Send method takes a destination, a buffer (array) of data, and the number
 	 * of bytes to send.  See docs for full description.
 	 */
 	public int send(short dest, byte[] data, int len) {
-		output.println("LinkLayer: Sending "+len+" bytes to "+dest);
-		theRF.transmit(data);
+		
+		short[] ControlBits = Packet.getControlBits(data);
+		short frameType = ControlBits[0];
+		short retry = ControlBits[1];
+		short seqNumber = ControlBits[2];
+		short DestAddress = ControlBits[3];
+		short SourceAddress = ControlBits[4];
+		output.println("I sent: " + len + "Bytes of Data to " + DestAddress);
+		
+		Packet packet = new Packet(frameType, retry, seqNumber, dest, ourMAC, data, len);
+		sendQueue.add(packet);
+		
 		return len;
+		
+		
 	}
 
 	/**
@@ -154,9 +170,24 @@ public class LinkLayer implements Dot11Interface, Runnable
 	 * the Transmission object.  See docs for full description.
 	 */
 	public int recv(Transmission t) {
-		output.println("LinkLayer: Pretending to block on recv()");
-		while(true); // <--- This is a REALLY bad way to wait.  Sleep a little each time through.
-		// return 0;
+		//output.println("LinkLayer:blocking on recv()");
+		Packet packet;
+		
+		while(DataQueue.isEmpty()) {
+			DIFS();	//wait difs as not to flood cpu time
+		}
+		
+			packet = DataQueue.poll();
+			short[] ControlBits = Packet.getControlBits(packet.packet);
+			
+			
+			output.println("I Received " + packet.packet.length + "Bytes from " + ControlBits[4]);
+			t.setBuf(packet.packet);
+			t.setDestAddr(packet.desAddr);
+			
+			t.setSourceAddr(packet.scrAddr);
+
+			return 0;
 	}
 
 	/**

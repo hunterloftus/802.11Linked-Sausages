@@ -8,18 +8,28 @@ import rf.RF;
 
 public class Receiver implements Runnable{
 	
-	public static Queue<byte[]> DataQueue = new ArrayBlockingQueue<byte[]>(0);
+	public Queue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
 	//this will end up being a packet object
 	
 	private RF theRF;
-	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(0);
+	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(1000);
+	private short ourMAC;       // Our MAC address
+	
+	short ControlByte;
+	short DestAddress;
+	short SourceAddress;
+	short frameType;
+	short retry;
+	short seqNumber;
+	
+	int PacketLength;
 
 	
 	
 	
 	private void SIFS() {
         try{
-            Thread.sleep(RF.aSlotTime); //wait SIFS amount of time
+            Thread.sleep(RF.aSIFSTime); //wait SIFS amount of time
         }
         
         catch(InterruptedException ex){
@@ -27,13 +37,10 @@ public class Receiver implements Runnable{
         }
 	}
 	
-	public static byte[] popQueue() {
-			return DataQueue.poll(); //return the oldest data
-
-	}
 	
-	
-	public Receiver(RF theRF, Queue<Boolean> ackQueue) {
+	public Receiver(RF theRF, Queue<Boolean> ackQueue, Queue<Packet> dataQueue, short ourMAC) {
+		this.DataQueue = dataQueue;
+		this.ourMAC = ourMAC;
 		this.theRF = theRF;
 		this.ackQueue = ackQueue;
 	}
@@ -46,7 +53,21 @@ public class Receiver implements Runnable{
 		System.out.println("Receiver Thread Reporting For Duty!!");
 
 		while(true) { //loop to keep thread alive
-			byte[] IncomingPacket = theRF.receive();
+			byte[] IncomingByteArray = theRF.receive();
+			Packet IncomingPacket;
+			
+			short[] ControlBits = Packet.getControlBits(IncomingByteArray);
+			
+			frameType = ControlBits[0];
+			retry = ControlBits[1];
+			seqNumber = ControlBits[2];
+			DestAddress = ControlBits[3];
+			SourceAddress = ControlBits[4];
+			PacketLength = IncomingByteArray.length;
+			
+			
+			IncomingPacket = new Packet(frameType, retry, seqNumber, DestAddress, SourceAddress, IncomingByteArray, PacketLength);
+
 			DataQueue.add(IncomingPacket); //put packet into queue
 		}
 		
