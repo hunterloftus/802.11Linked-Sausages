@@ -55,7 +55,7 @@ public class Sender implements Runnable{
                 }
                 else {
     				Packet PackettoSend = sendQueue.poll();
-    				theRF.transmit(PackettoSend.returnPacket());
+    				theRF.transmit(PackettoSend.getPacket());
 
                 }
             }

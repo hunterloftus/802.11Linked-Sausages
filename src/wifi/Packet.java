@@ -14,7 +14,7 @@ import java.util.zip.CRC32;
  * |Frame Type 3b | Retry 1b | Sequence Number 12b |
  * -------------------------------------------------
  * 
- *
+ * Help
  * @students Anna, Hunter, Ana-Lea
  * @version uuuuhhhh
  */
@@ -64,6 +64,27 @@ public class Packet
         CRC = new CRC32();
     }
     
+    /**
+     * 
+     * @param incomingPacket
+     */
+    public Packet(byte[] incomingPacket) {
+    	//set control
+    	
+    	desAddr = twoBytesToShort(incomingPacket[DES_START], incomingPacket[DES_START + 1]);
+    	scrAddr = twoBytesToShort(incomingPacket[SCR_START], incomingPacket[SCR_START+1]);
+    	packet = new byte[incomingPacket.length];
+    	
+        setScrAddr(scrAddr);
+        setDesAddr(desAddr);
+        setData(incomingPacket, (incomingPacket.length - OVERHEAD_SUM));
+    	
+    }
+    
+    public static short twoBytesToShort(byte b1, byte b2) {
+        return (short) ((b1 << 8) | (b2 & 0xFF));
+}
+    
     public static short[] getControlBits(byte[] data) {
     	short[] ControlBits = new short[5];
     	short frameType;
@@ -89,11 +110,11 @@ public class Packet
 		
 		DestAddress = data[2];
 		DestAddress = (short) (DestAddress << 8);
-		DestAddress = (short)(DestAddress | data[3]);
+		DestAddress = (short)((DestAddress | data[3]));
 		
 		SourceAddress = data[4];
 		SourceAddress = (short) (SourceAddress << 8);
-		SourceAddress = (short)(SourceAddress | data[5]);
+		SourceAddress = (short)((SourceAddress | data[5]));
 		
 		ControlBits[0]=frameType;
 		ControlBits[1]=retry;
@@ -117,7 +138,7 @@ public class Packet
     /**
      * Constructor or class Packet
      */
-    public Packet(short frameType, short retry, short sequenceNum, short desAddr,short scrAddr, byte[] data, int len) {
+    public Packet(short frameType, short retry, short sequenceNum, short desAddr, short scrAddr, byte[] data, int len) {
     	
         if(len > data.length) { // then send all of data
             if(data.length >= 2038) {   //is data bigger than max?
@@ -292,6 +313,7 @@ public class Packet
         
     }
     
+    
     /**
      * implement later
      * just a basic one right now
@@ -393,7 +415,7 @@ public class Packet
 
     public int getDesAddr() {
 
-        return -1;
+        return desAddr;
     }
 
     /**
@@ -419,7 +441,7 @@ public class Packet
     /**
      * Return
      */
-    public byte[] returnPacket() { //based on how big the packet is... we manipulate from 0 control + addresses + data + crc;
+    public byte[] getPacket() { //based on how big the packet is... we manipulate from 0 control + addresses + data + crc;
         return packet;
     }
     

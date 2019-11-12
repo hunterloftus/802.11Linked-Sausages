@@ -4,6 +4,8 @@ package wifi;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import javax.print.attribute.standard.OutputDeviceAssigned;
+
 import rf.RF;
 
 public class Receiver implements Runnable{
@@ -54,8 +56,10 @@ public class Receiver implements Runnable{
 
 		while(true) { //loop to keep thread alive
 			byte[] IncomingByteArray = theRF.receive();
-			Packet IncomingPacket;
+			//Packet packet = new Packet();
+			Packet IncomingPacket = null;
 			
+			/*
 			short[] ControlBits = Packet.getControlBits(IncomingByteArray);
 			
 			frameType = ControlBits[0];
@@ -64,9 +68,15 @@ public class Receiver implements Runnable{
 			DestAddress = ControlBits[3];
 			SourceAddress = ControlBits[4];
 			PacketLength = IncomingByteArray.length;
+			*/
+			
+			IncomingPacket = new Packet(IncomingByteArray);
+			
+			//IncomingPacket = new Packet(frameType, retry, seqNumber, DestAddress, SourceAddress, IncomingByteArray, PacketLength);
 			
 			
-			IncomingPacket = new Packet(frameType, retry, seqNumber, DestAddress, SourceAddress, IncomingByteArray, PacketLength);
+			
+			
 
 			DataQueue.add(IncomingPacket); //put packet into queue
 		}

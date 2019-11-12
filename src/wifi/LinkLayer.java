@@ -148,7 +148,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 	 * of bytes to send.  See docs for full description.
 	 */
 	public int send(short dest, byte[] data, int len) {
-		
+		/*
 		short[] ControlBits = Packet.getControlBits(data);
 		short frameType = ControlBits[0];
 		short retry = ControlBits[1];
@@ -156,8 +156,15 @@ public class LinkLayer implements Dot11Interface, Runnable
 		short DestAddress = ControlBits[3];
 		short SourceAddress = ControlBits[4];
 		output.println("I sent: " + len + "Bytes of Data to " + DestAddress);
+		*/
+		
+		
+		short frameType = 0;
+		short retry = 0;
+		short seqNumber = 0;
 		
 		Packet packet = new Packet(frameType, retry, seqNumber, dest, ourMAC, data, len);
+		output.println("I sent: " + len + " Bytes of Data to " + packet.getDesAddr());
 		sendQueue.add(packet);
 		
 		return len;
@@ -178,15 +185,15 @@ public class LinkLayer implements Dot11Interface, Runnable
 		}
 		
 			packet = DataQueue.poll();
-			short[] ControlBits = Packet.getControlBits(packet.packet);
+			//short[] ControlBits = Packet.getControlBits(packet.packet);
 			
 			
-			output.println("I Received " + packet.packet.length + "Bytes from " + ControlBits[4]);
+			//output.println("I Received " + packet.packet.length + "Bytes from " + ControlBits[4]);
 			t.setBuf(packet.packet);
 			t.setDestAddr(packet.desAddr);
-			
 			t.setSourceAddr(packet.scrAddr);
 
+			output.println("I Received a Packet with " + packet.getPacket().length + " Bytes from " + packet.getScrAddr());
 			return 0;
 	}
 
