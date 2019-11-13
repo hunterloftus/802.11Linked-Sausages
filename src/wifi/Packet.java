@@ -23,7 +23,7 @@ public class Packet
     // TODO 
 
 	private int control;
-	private boolean retry;
+	private short retry;
 	private short frameType;
 	private short sequenceNum;
 	public short desAddr;
@@ -52,88 +52,29 @@ public class Packet
     
     ByteBuffer bb = ByteBuffer.allocate(Long.BYTES);
     
-    //test variable- Delete later 
-    PrintWriter output;
-
     /**
-     * Creates a Packet Object and instansiates the CRC
+     * Creates a Packet Object
      */
     public Packet() {
-        //packet = new byte[MAX_PACKET_SUM];// 2+2+2+2038+4 Max packet length
-        System.out.println("Changed see doc");
-        CRC = new CRC32();
     }
     
     /**
+     * Takes in a byte array and turns that into a packet.
      * 
-     * @param incomingPacket
+     * 
+     * @param incomingPacket	a byte array
      */
     public Packet(byte[] incomingPacket) {
-    	//set control
+    	//check CRC // Ignore if CRC is not correct
     	
-    	desAddr = twoBytesToShort(incomingPacket[DES_START], incomingPacket[DES_START + 1]);
-    	scrAddr = twoBytesToShort(incomingPacket[SCR_START], incomingPacket[SCR_START+1]);
     	packet = new byte[incomingPacket.length];
     	
-        setScrAddr(scrAddr);
-        setDesAddr(desAddr);
+    	setControl(incomingPacket[CONTROL_START], incomingPacket[CONTROL_START + 1]);
+        setScrAddr(twoBytesToShort(incomingPacket[SCR_START], incomingPacket[SCR_START+1]));
+        setDesAddr(twoBytesToShort(incomingPacket[DES_START], incomingPacket[DES_START + 1]));
         setData(incomingPacket, (incomingPacket.length - OVERHEAD_SUM));
-    	
-    }
-    
-    public static short twoBytesToShort(byte b1, byte b2) {
-        return (short) ((b1 << 8) | (b2 & 0xFF));
-}
-    
-    public static short[] getControlBits(byte[] data) {
-    	short[] ControlBits = new short[5];
-    	short frameType;
-    	short retry;
-    	short DestAddress;
-    	short SourceAddress;
-    	short seqNumber;
-    	
-    	frameType = data[0];
-		frameType = (short)(frameType & 224);//11100000
-		
-		retry = data[0];
-		retry = (short)(retry & 16);//00010000
-		
-		
-		
-		seqNumber = data[0];
-		seqNumber = (short)(seqNumber<<8);
-		seqNumber = (short)(seqNumber|data[1]);
-		seqNumber = (short)(seqNumber&4095);//0000111111111111
-		
-		
-		
-		DestAddress = data[2];
-		DestAddress = (short) (DestAddress << 8);
-		DestAddress = (short)((DestAddress | data[3]));
-		
-		SourceAddress = data[4];
-		SourceAddress = (short) (SourceAddress << 8);
-		SourceAddress = (short)((SourceAddress | data[5]));
-		
-		ControlBits[0]=frameType;
-		ControlBits[1]=retry;
-		ControlBits[2]=seqNumber;
-		ControlBits[3]=DestAddress;
-		ControlBits[4]=SourceAddress;
-		
-		return ControlBits;
 
-    	
-    }
-    /**
-     * Deleted because using short param would be ambiguous
-     */
-    public Packet(short scrAddr) {
-        this.scrAddr = scrAddr;
-        System.out.println("Do not use this constructor. Make packet object and call .setScrAddr");
-    }
-    
+    } 
     
     /**
      * Constructor or class Packet
@@ -159,105 +100,65 @@ public class Packet
                 packet = new byte[OVERHEAD_SUM + len];
             }
         }
+        setControl(frameType, retry, sequenceNum);
         setScrAddr(scrAddr);
         setDesAddr(desAddr);
         setData(data, len);
+        setCRC();
     }
     
     /**
-     * 
-     * 
-     * @param
-     * @param
-     * @param
-     * 
-     * @return packet;
+     * Used by receiver to translate bytes to information about control.
      */
-    public byte[] makePacket(short frameType, boolean retry, short sequenceNum, byte[] data, int len, short desAddr) {
-        int lengthOfData = len;
-        if(len > data.length) { // then send all of data
-            if(data.length >= 2038) {   //is data bigger than max?
-                //send maximum length
-                packet = new byte[MAX_PACKET_SUM];
-                lengthOfData = 2038;//maximum You'll still need to text this out...
-            }
-            else{
-                packet = new byte[OVERHEAD_SUM + data.length];
-                lengthOfData = data.length;
-                System.out.println("Here");
-            }
-        }
-        else{
-            //send len amount of bytes in data
-            if(len > 2038) {
-                //send max length
-                packet = new byte[MAX_PACKET_SUM];
-            }
-            else{
-                packet = new byte[OVERHEAD_SUM + len];
-            }
-        }
-        setControl(frameType, retry, sequenceNum);
+    private void setControl(byte fByte, byte sByte) {
+    	packet[0] = fByte;
+    	packet[1] = sByte;
+    	
+        frameType = (short)((fByte >> 5)& 0x7);
+        retry = (short)((fByte >> 4) & 0x1);
+        byte firstHalfOfSequence = (byte) (fByte & 0xF);
+        sequenceNum = twoBytesToShort(firstHalfOfSequence, sByte);
         
-        setScrAddr(scrAddr);
-        setDesAddr(desAddr);
-        setData(data, lengthOfData);
-        setCRC1();
         
-        return packet;
+        //This doesn't set the this objects control packet byte array. Implement if needed...
     }
     
     //Setters
     
     /**
-     * 
+     * Used by the sender, to put data into packet
      */
-    public void setControl(short frameType, boolean retry, short sequenceNum) {
+    public void setControl(short frameType, short retry, short sequenceNum) {
         this.frameType = frameType;
         this.retry = retry;
         this.sequenceNum = sequenceNum;
         
-        //To implement - limit on sequence number
+        //To implement - limit on sequence number?
         
-        byte firstByte = (byte)(frameType);
+        byte holderByte = (byte)(frameType);        
         
-        byte buildFirstByte = (byte)((frameType << 5));
-        System.out.println("buildFirstByte: " + Integer.toBinaryString(buildFirstByte));
-        System.out.println("Sequence number" + Integer.toBinaryString(sequenceNum));
-        byte firstHalfSN = (byte) (sequenceNum & 0xFF); 
-        System.out.println("First Half of SN: " + Integer.toBinaryString(firstHalfSN));
-        
-        if(retry) {
-            firstByte = (byte)(buildFirstByte | 0b1000 | firstHalfSN);
-            System.out.println("Here " + Integer.toBinaryString(firstByte & 0xFF));
-            packet[0] = firstByte;
-        }
-        else{
+        if(retry > 0) {
+            holderByte = (byte)(((holderByte << 5 | 0b10000)) | (sequenceNum >> 8));
+            System.out.println("Here " + Integer.toBinaryString(holderByte & 0xFF));
+            packet[0] = holderByte;
             
         }
+        else{
+            holderByte = (byte)(((holderByte << 5 | 0b00000)) | (sequenceNum >> 8));
+            System.out.println("Here " + Integer.toBinaryString(holderByte & 0xFF));
+            packet[0] = holderByte;            
+        }
         
+        
+        holderByte = (byte)((byte)sequenceNum & 0xFF);
+        System.out.println("Here " + Integer.toBinaryString(holderByte & 0xFF));
         //byte sequenceNumByte = (byte)(sequenceNum);
-        
-        
-        
-        //packet[0] = 0b0;
-        packet[1] = 0b1;
-    
+
+        packet[1] = holderByte;
+
     }
     
-    /**
-     * Class to extract control bits and put them into their respective places
-     */
-    private void setControl(byte[] incomingPacket) {
-        //getfirst four bytes in the array
-        
-        byte firstByte = incomingPacket [0];
-        
-        frameType = (short)((firstByte & 0b11100000) >> 4);
-        System.out.print("This frame type: " + frameType);
-        //retry = firstByte;
-        
-    }
+
     
     /**
      * If used by the sender class, can be used in the constructor. As sender should be send from one endsystem.
@@ -320,9 +221,9 @@ public class Packet
      */
     public void setCRC() {
         int packOffSet = packet.length - 4;
-        
+        System.out.println("HERE");
         for(int i = packOffSet; i < packet.length; i++){
-            packet[i] = 1;
+            packet[i] = (byte)0xFF;
         }
     }
     
@@ -367,7 +268,7 @@ public class Packet
         byte[] tempArray;
         if(incomingPacket.length <= MAX_PACKET_SUM) {// if packet is too big to fit into maxPacketLength then its invalid
             packet = incomingPacket;
-            setControl(incomingPacket);
+            //setControl(incomingPacket);
             //setControl
             //setDestination
             //setSource
@@ -401,7 +302,7 @@ public class Packet
     /**
      * 
      */
-    public boolean getRetry() {
+    public short getRetry() {
         return retry;
     }
 
@@ -425,9 +326,9 @@ public class Packet
         return scrAddr;
     }
 
-    public long getData() {
+    public byte[] getData() {
 
-        return -1;
+        return data;
     }
 
     public void setControl(String frameType, boolean retry, 
@@ -443,6 +344,17 @@ public class Packet
      */
     public byte[] getPacket() { //based on how big the packet is... we manipulate from 0 control + addresses + data + crc;
         return packet;
+    }
+    
+    /**
+     * Let's make life easier by doing this.
+     * 
+     * @param b1
+     * @param b2
+     * @return 
+     */
+    public static short twoBytesToShort(byte b1, byte b2) {
+        return (short) ((b1 << 8) | (b2 & 0xFF));
     }
     
     /**

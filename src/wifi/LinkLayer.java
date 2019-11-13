@@ -159,13 +159,14 @@ public class LinkLayer implements Dot11Interface, Runnable
 		*/
 		
 		
-		short frameType = 0;
-		short retry = 0;
-		short seqNumber = 0;
+		short frameType = 000;
+		short retry = 1;
+		short seqNumber = 01;
 		
 		Packet packet = new Packet(frameType, retry, seqNumber, dest, ourMAC, data, len);
 		output.println("I sent: " + len + " Bytes of Data to " + packet.getDesAddr());
 		sendQueue.add(packet);
+		output.println(packet.toString());
 		
 		return len;
 		
@@ -194,6 +195,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 			t.setSourceAddr(packet.scrAddr);
 
 			output.println("I Received a Packet with " + packet.getPacket().length + " Bytes from " + packet.getScrAddr());
+			output.println(packet.niceToString());
 			return 0;
 	}
 
