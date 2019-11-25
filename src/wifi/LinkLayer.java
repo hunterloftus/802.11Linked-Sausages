@@ -15,7 +15,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 	private RF theRF;           // You'll need one of these eventually
 	private short ourMAC;       // Our MAC address
 	private PrintWriter output; // The output stream we'll write to
-	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(4096);
+	private Boolean[] ackQueue = new Boolean[4096];
 	private Queue<Packet> sendQueue = new ArrayBlockingQueue<Packet>(1000); //make this a packet object
 	public static Queue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
 	short seqNumber;
@@ -37,6 +37,12 @@ public class LinkLayer implements Dot11Interface, Runnable
 		theRF = new RF(null, null);
 		output.println("LinkLayer: Constructor ran.");
 		//shoot of sender and receiver here
+		
+		for(int i=0;i<4096;i++) {
+			ackQueue[i]=false;
+		}
+		
+		
 		Receiver recv = new Receiver(theRF, ackQueue, DataQueue, ourMAC);
 		Sender sender = new Sender(theRF, ackQueue, sendQueue, ourMAC);
 		(new Thread(recv)).start();

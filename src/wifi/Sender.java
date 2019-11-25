@@ -8,7 +8,7 @@ import rf.RF;
 public class Sender implements Runnable{
 	
 	private RF theRF;
-	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(4096); //queue to pass ACKS back and forth
+	private Boolean[] ackQueue = new Boolean[4096];
 	private Queue<Packet> sendQueue = new ArrayBlockingQueue<Packet>(1000); //make this a packet object
 
 	private short ourMAC;       // Our MAC address
@@ -18,13 +18,14 @@ public class Sender implements Runnable{
 	int PacketLength;
 	byte[] data;
 	int backoffWindow;
-	int timeoutWindow = 2000;
+	int timeoutWindow = 20000;
+	private Packet packet;
 
 
 	
 	//go through the decision tree
 	
-	public Sender(RF theRF, Queue<Boolean> ackQueue, Queue<Packet> sendQueue, short ourMAC) {
+	public Sender(RF theRF, Boolean[] ackQueue, Queue<Packet> sendQueue, short ourMAC) {
 		this.sendQueue = sendQueue;
 		this.ourMAC = ourMAC;
 		this.theRF = theRF;
@@ -72,10 +73,10 @@ public class Sender implements Runnable{
     		DIFS();
     		if(theRF.inUse()==false) {
     			sendPacket();
-    			System.out.println("i Sent!");
+    			sent = true;
     		}
     		else {
-    			System.out.println("I waited: " + backoff);
+    			//System.out.println("I waited: " + backoff);
 
     			backoff = backoff * backoff;
     		}
@@ -83,31 +84,31 @@ public class Sender implements Runnable{
     }
     
     
-    private void reTransmit(int seqNumber) {
+    private void reTransmit() {
     	try{
             Thread.sleep(timeoutWindow); //start counting down back off
         }
         catch(InterruptedException ex){
             Thread.currentThread().interrupt();
         }
-    	
+		System.out.println(packet.getSequenceNum());
+		System.out.println(ackQueue[packet.getSequenceNum()]);
+    	if(ackQueue[packet.getSequenceNum()]==true) {
+    		return;
+    	}
+    	else {
+    		System.out.println("retransmitting");
+    		backOff(2);
+    	}
     	//get seqNumber
     	
     }
     
     
     private void sendPacket() {
-    	if(sendQueue.peek() != null) {
-    		Packet PackettoSend = sendQueue.poll();
-        	System.out.println(PackettoSend.toString());
-    		theRF.transmit(PackettoSend.getPacket());
-    		
-    		
-    		
-    		
-    		
-    	}
-    	System.out.println("here");
+        	System.out.println(packet.toString());
+    		theRF.transmit(packet.getPacket());
+    		reTransmit();
     }
 	
 	
@@ -119,11 +120,11 @@ public class Sender implements Runnable{
 				 DIFS(); //wait some time as not to crowd cpu
 			 }
 			 else {
+				 packet = sendQueue.poll();
 				 if(theRF.inUse()==false){ //if there is no transmission you have the clear to transmit
 					 DIFS();
 					 if(theRF.inUse()==false) {
 						 sendPacket();
-		    			 //waitforawk
 					 }
 					 else {
 						 backOff(2);
