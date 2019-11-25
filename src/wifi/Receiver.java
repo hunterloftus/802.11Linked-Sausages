@@ -63,12 +63,14 @@ public class Receiver implements Runnable{
 	}
 	
 	
+	
 	private int toUs(byte[] packet) {
-		int dstAddr= packet[2];
-		dstAddr = dstAddr<<8;
-		dstAddr = dstAddr|packet[3];
-		return dstAddr;
-		
+		//int dstAddr= packet[2];
+		//dstAddr = dstAddr<<8;
+		//dstAddr = dstAddr|packet[3];
+		System.out.println("TheyThinkourMAC: " + ((short) ((packet[2] << 8) | (packet[3] & 0xFF))));
+		//return dstAddr;
+		return (short) ((packet[2] << 8) | (packet[3] & 0xFF));
 		
 	}
 	
@@ -80,11 +82,12 @@ public class Receiver implements Runnable{
 		System.out.println("Receiver Thread Reporting For Duty!!");
 
 		while(true) { //loop to keep thread alive
-			if(theRF.dataWaiting()==true) {
+			if(theRF.receive()!=null) {
 				byte[] IncomingByteArray = theRF.receive();
 				//Packet packet = new Packet();
 				Packet IncomingPacket = null;
 				System.out.println("inhere");
+				System.out.println("ourMAC: " + ourMAC);
 				
 				
 				

@@ -337,7 +337,6 @@ public class Packet
     * @return the sequence number of this packet
     */
     public int getSequenceNum() {
-
         return sequenceNum;
     }
 
