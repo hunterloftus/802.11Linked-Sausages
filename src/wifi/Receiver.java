@@ -16,7 +16,7 @@ public class Receiver implements Runnable{
 	//this will end up being a packet object
 	
 	private RF theRF;
-	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(1000);
+	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(4096);
 	private short ourMAC;       // Our MAC address
 	
 	short ControlByte;
@@ -49,6 +49,29 @@ public class Receiver implements Runnable{
 		this.ackQueue = ackQueue;
 	}
 	
+	private void sendACK(Packet packet) {
+		//get seqNumber
+		packet.setACK();
+		
+		System.out.println("ACK:" + packet.toString());
+		
+		
+		SIFS();
+		theRF.transmit(packet.getPacket());
+		
+		
+	}
+	
+	
+	private int toUs(byte[] packet) {
+		int dstAddr= packet[2];
+		dstAddr = dstAddr<<8;
+		dstAddr = dstAddr|packet[3];
+		return dstAddr;
+		
+		
+	}
+	
 	//receiver loop
 	
 	//send section for ACKS//AWKS
@@ -57,31 +80,27 @@ public class Receiver implements Runnable{
 		System.out.println("Receiver Thread Reporting For Duty!!");
 
 		while(true) { //loop to keep thread alive
-			byte[] IncomingByteArray = theRF.receive();
-			//Packet packet = new Packet();
-			Packet IncomingPacket = null;
+			if(theRF.dataWaiting()==true) {
+				byte[] IncomingByteArray = theRF.receive();
+				//Packet packet = new Packet();
+				Packet IncomingPacket = null;
+				System.out.println("inhere");
+				
+				
+				
+				if(toUs(IncomingByteArray)==ourMAC){
+					IncomingPacket = new Packet(IncomingByteArray);
+					sendACK(IncomingPacket);
+					
+					//IncomingPacket = new Packet(frameType, retry, seqNumber, DestAddress, SourceAddress, IncomingByteArray, PacketLength);
+					
+					DataQueue.add(IncomingPacket); //put packet into queue
+				}
+				else {
+					System.out.println("notforus");
+				}
+			}	
 			
-			/*
-			short[] ControlBits = Packet.getControlBits(IncomingByteArray);
-			
-			frameType = ControlBits[0];
-			retry = ControlBits[1];
-			seqNumber = ControlBits[2];
-			DestAddress = ControlBits[3];
-			SourceAddress = ControlBits[4];
-			PacketLength = IncomingByteArray.length;
-			*/
-			
-			IncomingPacket = new Packet(IncomingByteArray);
-			
-			//IncomingPacket = new Packet(frameType, retry, seqNumber, DestAddress, SourceAddress, IncomingByteArray, PacketLength);
-			
-			
-			
-			
-			
-
-			DataQueue.add(IncomingPacket); //put packet into queue
 		}
 		
 	}

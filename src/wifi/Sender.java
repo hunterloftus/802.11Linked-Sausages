@@ -8,7 +8,7 @@ import rf.RF;
 public class Sender implements Runnable{
 	
 	private RF theRF;
-	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(1000); //queue to pass ACKS back and forth
+	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(4096); //queue to pass ACKS back and forth
 	private Queue<Packet> sendQueue = new ArrayBlockingQueue<Packet>(1000); //make this a packet object
 
 	private short ourMAC;       // Our MAC address
@@ -18,6 +18,7 @@ public class Sender implements Runnable{
 	int PacketLength;
 	byte[] data;
 	int backoffWindow;
+	int timeoutWindow = 2000;
 
 
 	
@@ -27,7 +28,9 @@ public class Sender implements Runnable{
 		this.sendQueue = sendQueue;
 		this.ourMAC = ourMAC;
 		this.theRF = theRF;
-		this.ackQueue = ackQueue;	
+		this.ackQueue = ackQueue;
+		
+		
 	}
 	
 
@@ -79,12 +82,30 @@ public class Sender implements Runnable{
     	}
     }
     
+    
+    private void reTransmit(int seqNumber) {
+    	try{
+            Thread.sleep(timeoutWindow); //start counting down back off
+        }
+        catch(InterruptedException ex){
+            Thread.currentThread().interrupt();
+        }
+    	
+    	//get seqNumber
+    	
+    }
+    
+    
     private void sendPacket() {
     	if(sendQueue.peek() != null) {
     		Packet PackettoSend = sendQueue.poll();
         	System.out.println(PackettoSend.toString());
     		theRF.transmit(PackettoSend.getPacket());
-    		System.out.println("i sent");
+    		
+    		
+    		
+    		
+    		
     	}
     	System.out.println("here");
     }

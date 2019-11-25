@@ -295,6 +295,13 @@ public class Packet
     public void retransmition() {
     	setControl(frameType, (short)1, sequenceNum);
     }
+    
+    /**
+     * 
+     */
+    public void setACK() {
+    	setControl((short)0b001, (short) 0, sequenceNum);
+    }
 
 
     

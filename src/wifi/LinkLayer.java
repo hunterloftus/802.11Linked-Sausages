@@ -1,94 +1,4 @@
- package wifi;
-
- 
-
-/*
-
-package wifi;
-import java.io.PrintWriter;
-import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-
-import rf.RF;
-
-/**
- * Use this layer as a starting point for your project code.  See {@link Dot11Interface} for more
- * details on these routines.
- * @author richards
- 
-public class LinkLayer implements Dot11Interface 
-{
-	private RF theRF;           // You'll need one of these eventually
-	private short ourMAC;       // Our MAC address
-	private PrintWriter output; // The output stream we'll write to
-	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(0);
-	private Queue<byte[]> sendQueue = new ArrayBlockingQueue<byte[]>(0); //make this a packet object
-
-	
-	
-	
-	*//**
-	 * Constructor takes a MAC address and the PrintWriter to which our output will
-	 * be written.
-	 * @param ourMAC  MAC address
-	 * @param output  Output stream associated with GUI
-	 *//*
-
-
-	*//**
-	 * Send method takes a destination, a buffer (array) of data, and the number
-	 * of bytes to send.  See docs for full description.
-	 *//*
-	public int send(short dest, byte[] data, int len) {
-		output.println("LinkLayer: Sending "+len+" bytes to "+dest);
-		theRF.transmit(data);
-		return len;
-	}
-
-	*//**
-	 * Recv method blocks until data arrives, then writes it an address info into
-	 * the Transmission object.  See docs for full description.
-	 *//*
-	public int recv(Transmission t) {
-		System.out.println("please dont break");
-		output.println("LinkLayer:blocking on recv()");
-		byte[] packet;
-		
-		if(Receiver.popQueue()==null) {
-			DIFS();	//wait difs as not to flood cpu time		
-		}
-		else {
-			packet = Receiver.popQueue();
-		}
-		
-		return 0; //fix this
-	}
-	
-
-	*//**
-	 * Returns a current status code.  See docs for full description.
-	 *//*
-	public int status() {
-		output.println("LinkLayer: Faking a status() return value of 0");
-		return 0;
-	}
-
-	*//**
-	 * Passes command info to your link layer.  See docs for full description.
-	 *//*
-	public int command(int cmd, int val) {
-		output.println("LinkLayer: Sending command "+cmd+" with value "+val);
-		return 0;
-	}
-	
-	
-
-	
-}*/
-
-
-
- 
+ package wifi; 
 import java.io.PrintWriter;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -105,9 +15,11 @@ public class LinkLayer implements Dot11Interface, Runnable
 	private RF theRF;           // You'll need one of these eventually
 	private short ourMAC;       // Our MAC address
 	private PrintWriter output; // The output stream we'll write to
-	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(1000);
+	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(4096);
 	private Queue<Packet> sendQueue = new ArrayBlockingQueue<Packet>(1000); //make this a packet object
 	public static Queue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
+	short seqNumber;
+
 
 
 
@@ -129,6 +41,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 		Sender sender = new Sender(theRF, ackQueue, sendQueue, ourMAC);
 		(new Thread(recv)).start();
 		(new Thread(sender)).start();
+		seqNumber = 0;
 	}
 	
 	
@@ -162,14 +75,17 @@ public class LinkLayer implements Dot11Interface, Runnable
 		
 		
 		short frameType = 000;
-		short retry = 1;
-		short seqNumber = 01;
+		short retry = 0;
 		
 		Packet packet = new Packet(frameType, retry, seqNumber, dest, ourMAC, data, len);
 		output.println("I sent: " + len + " Bytes of Data to " + packet.getDesAddr());
 		sendQueue.add(packet);
 		output.println(packet.toString());
 		
+		seqNumber++;
+		if(seqNumber>=4098) {
+			seqNumber=0;
+		}
 		return len;
 		
 		
