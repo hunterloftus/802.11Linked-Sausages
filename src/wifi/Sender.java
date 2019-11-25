@@ -1,15 +1,11 @@
  package wifi;
 
- 
-
- 
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import rf.RF;
 
 public class Sender implements Runnable{
-
 	
 	private RF theRF;
 	private Queue<Boolean> ackQueue = new ArrayBlockingQueue<Boolean>(1000); //queue to pass ACKS back and forth
@@ -21,6 +17,7 @@ public class Sender implements Runnable{
 	short SourceAddress;
 	int PacketLength;
 	byte[] data;
+	int backoffWindow;
 
 
 	
@@ -30,10 +27,10 @@ public class Sender implements Runnable{
 		this.sendQueue = sendQueue;
 		this.ourMAC = ourMAC;
 		this.theRF = theRF;
-		this.ackQueue = ackQueue;
-		
+		this.ackQueue = ackQueue;	
 	}
 	
+
 	
     private void DIFS(){
         int wait = RF.aSIFSTime + (RF.aSlotTime + RF.aSlotTime); //DIFS = SIFS + (SlotTime x 2) by 802.11 standard
@@ -46,26 +43,73 @@ public class Sender implements Runnable{
         }
 
     }
+    
+	private void emptyWait(int backOff) { //waits the exponential back off time
+		
+		
+		while(backOff>0) {
+			if(theRF.inUse()==true) {
+				while(theRF.inUse()==true);
+				DIFS();
+			}
+	        try{
+	            Thread.sleep(theRF.aSlotTime); //start counting down back off
+	        }
+	        catch(InterruptedException ex){
+	            Thread.currentThread().interrupt();
+	        }
+	        backOff = backOff-1; //need to roll dice with new value
+		}
+	}
+	
+    private void backOff(int backoff) { //
+    	boolean sent = false;
+    	while(sent==false) {
+    		emptyWait(backoff);
+    		DIFS();
+    		if(theRF.inUse()==false) {
+    			sendPacket();
+    			System.out.println("i Sent!");
+    		}
+    		else {
+    			System.out.println("I waited: " + backoff);
+
+    			backoff = backoff * backoff;
+    		}
+    	}
+    }
+    
+    private void sendPacket() {
+    	Packet PackettoSend = sendQueue.poll();
+    	PackettoSend.toString();
+		theRF.transmit(PackettoSend.getPacket());
+		System.out.println("i sent");
+    }
 	
 	
-	public  void run() {
+	public void run() {
 		System.out.println("Sender Thread Reporting For Duty!!");
 		while(true) {//keeps the thread moving
-			if(theRF.inUse()==false){ //if there is no transmission you have the clear to transmit
-                if(sendQueue.isEmpty()==true) {
-                	
-                }
-                else {
-    				Packet PackettoSend = sendQueue.poll();
-    				theRF.transmit(PackettoSend.getPacket());
-
-                }
-            }
-			else {
-				DIFS(); //Wait DIFS as not to waste CPU time
-			}
 			
-		}
-		
-	}
+			 if(sendQueue.isEmpty()==true) {
+				 DIFS(); //wait some time as not to crowd cpu
+			 }
+			 else {
+				 if(theRF.inUse()==false){ //if there is no transmission you have the clear to transmit
+					 DIFS();
+					 if(theRF.inUse()==false) {
+						 sendPacket();
+		    			 //waitforawk
+					 }
+					 else {
+						 backOff(2);
+					 }
+					 
+				 }
+				 else {
+					backOff(2);
+				 }          
+		     }	 
+		}		
+	}//end of run
 }
