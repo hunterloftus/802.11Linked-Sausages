@@ -1,7 +1,6 @@
 package wifi;
 
  
-import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
@@ -57,7 +56,7 @@ public class Packet
     
     /**
 	 * Takes in a byte array and turns that into a packet. This constructor sets the
-	 * following variables to handle all the it manipulation
+	 * following variables to handle all the bit manipulations
 	 * 		- Control, Along with 
 	 * 			- Frame Type 
 	 * 			- Retry 
@@ -71,32 +70,31 @@ public class Packet
 	 * @param incomingPacket a byte array
 	 */
     public Packet(byte[] incomingPacket) {    	
-    	packet = new byte[incomingPacket.length];
-    	
+    	//packet = new byte[incomingPacket.length];
+    	packet = incomingPacket;
     	setControl(incomingPacket[CONTROL_START], incomingPacket[CONTROL_START + 1]);
         setScrAddr(twoBytesToShort(incomingPacket[SCR_START], incomingPacket[SCR_START+1]));
         setDesAddr(twoBytesToShort(incomingPacket[DES_START], incomingPacket[DES_START + 1]));
-        setData(incomingPacket, (incomingPacket.length - OVERHEAD_SUM));
-
+        setData(incomingPacket);
     } 
     
     /**
-	 * This Constructor takes in the following parameters and sets those parameters
-	 * to the associated variables to make it a packet object.
-	 * 
-	 * @param frameType apart of the control, this should be set to either 
-	 * 		- 0b000 for DATA
-	 * 		- 0b001 for ACK
-	 * 		- 0b010 for BEACON 
-	 * 		- 0b100 for CTS
-	 * 		- 0b101 for RTS
-	 * @param retry set to 1 if this is a packet that is resent
-	 * @param sequenceNum	Sequence number of this particular packet
-	 * @param desAddr		Destination on this packet
-	 * @param scrAddr		Source address, where the packet came from. This end system's MAC address.
-	 * @param data			Data to send in this packet. 
-	 * @param len			Length of data in data to send.
-	 */
+	* This Constructor takes in the following parameters and sets those parameters
+	* to the associated variables.
+	* 
+	* @param frameType 		apart of the control, this should be set to either 
+	* 		- 0b000 for DATA
+	* 		- 0b001 for ACK
+	* 		- 0b010 for BEACON 
+	* 		- 0b100 for CTS
+	* 		- 0b101 for RTS
+	* @param retry 			set to 1 if this is a packet that is resent, 0 if not.
+	* @param sequenceNum	Sequence number of this particular packet
+	* @param desAddr		Destination on this packet
+	* @param scrAddr		Source address, where the packet came from. This end system's MAC address.
+	* @param data			Data to send in this packet. 
+	* @param len			Length of data in data to send.
+	*/
     public Packet(short frameType, short retry, short sequenceNum, short desAddr, short scrAddr, byte[] data, int len) {
     	
         if(len > data.length) { // then send all of data
@@ -122,18 +120,18 @@ public class Packet
         setScrAddr(scrAddr);
         setDesAddr(desAddr);
         setData(data, len);
-        setCRC();
+        setCRC();	//Sets to all ones.
         //setCRC1(); Doesn't work correctly
     }
     //Setters for Packet Class -----------------------------------------------------------------
 
     /**
-	 * Used by receiver to translate bytes to information about control by setting the var for control.
-	 * Takes the first two bytes of a frame, concatenates those two bytes together to get the control and it's sub-parts frameType, retry, sequenceNumber. 
-	 * 
-	 * @param fByte first B in the array
-	 * @param sByte	Second B in the array
-	 */
+	* Used by receiver to translate bytes to information about control by setting the var for control.
+	* Takes the first two bytes of a frame, concatenates those two bytes together to get the control and it's sub-parts frameType, retry, sequenceNumber. 
+	* 
+	* @param fByte first B in the array
+	* @param sByte	Second B in the array
+	*/
     private void setControl(byte fByte, byte sByte) {
     	packet[0] = fByte;
     	packet[1] = sByte;
@@ -146,17 +144,17 @@ public class Packet
     }
     
     /**
-	 * Used by the sender constructor, to put data into packet
-	 * 
-	 * @param frameType apart of the control, this should be set to either 
-	 * 			- 0b000 for DATA
-	 * 			- 0b001 for ACK
-	 * 			- 0b010 for BEACON 
-	 * 			- 0b100 for CTS
-	 * 			- 0b101 for RTS
-	 * @param retry set to 1 if this is a packet that is resent
-	 * @param sequenceNum	Sequence number of this particular packet
-	 */
+	* Used by the sender constructor, to put data into packet
+	* 
+	* @param frameType apart of the control, this should be set to either 
+	* 			- 0b000 for DATA
+	* 			- 0b001 for ACK
+	* 			- 0b010 for BEACON 
+	* 			- 0b100 for CTS
+	* 			- 0b101 for RTS
+	* @param retry set to 1 if this is a packet that is resent
+	* @param sequenceNum	Sequence number of this particular packet
+	*/
     public void setControl(short frameType, short retry, short sequenceNum) {
         this.frameType = frameType;
         this.retry = retry;
@@ -184,11 +182,11 @@ public class Packet
 
     
     /**
-	 * Passes along a Source address short to be turned into Bytes then placed
-	 * in a frame - indexed at packer[4], packet[5].
-	 * 
-	 * @param scrAddr short, the is the source address that a packet originates from.
-	 */
+	* Passes along a Source address short to be turned into Bytes then placed
+	* in a frame - indexed at packer[4], packet[5].
+	* 
+	* @param scrAddr short, the is the source address that a packet originates from.
+	*/
     public void setScrAddr(short scrAddr) {
         this.scrAddr = (short)scrAddr;
         int num = scrAddr | 0b0000000000000000;
@@ -198,10 +196,10 @@ public class Packet
     
 
     /**
-     * Sets the Destination Address in packet
-     * 
-     * @param desAddres destination address that the packet was intended to be sent to.
-     */
+    * Sets the Destination Address in packet
+    * 
+    * @param desAddres destination address that the packet was intended to be sent to.
+    */
     public void setDesAddr(short desAddr) {
         this.desAddr = desAddr;
         int num = desAddr | 0b0000000000000000;
@@ -211,22 +209,40 @@ public class Packet
     
 
     /**
-     * Passes through a byte array to fill the data to a specific length specified through the param len.
-     * 
-     * @param data	Data of a packet
-     * @param len	length of byte to send of the byte array passed through the param data
-     */
+    * Passes through a byte array to fill the data to a specific length specified through the param len.
+    * Used by the sender.
+    * 
+    * @param data	Data of a packet
+    * @param len	length of byte to send of the byte array passed through the param data
+    */
     public void setData(byte[] data, int len) {
-
         for(int i = 0; i < len; i++) {
             packet[i + DATA_START] = data[i];
         }        
     }
     
+    /**
+     * 
+     */
+    public void setData(byte[] incomingPacket) {
+    	byte[] data = new byte[incomingPacket.length - OVERHEAD_SUM];
+    	//byte[] data = new byte[incomingPacket.length];
+    	//System.out.println(tempArray.length);
+    	//packet is already set, now I need to set the data.
+    	for(int i = 0; i < data.length; i++) {
+    		//System.out.println("i at: " + i);
+    		data[i] = incomingPacket[i + DATA_START];
+    		//System.out.println("I want to die " + incomingPacket[i + DATA_START]);
+    		
+            //packet[i + DATA_START] = data[i];
+        } 
+    	this.data = data;
+    }
+    
     
     /**
-     * Alternative CRC, that fills the CRC with all 1's (-1's)
-     */
+    * Alternative CRC, that fills the CRC with all 1's (-1's)
+    */
     public void setCRC() {
         int packOffSet = packet.length - 4;
         for(int i = packOffSet; i < packet.length; i++){
@@ -235,10 +251,10 @@ public class Packet
     }
     
     /**
-     * This method right now does not set the CRC, it just prints it out.
-     * Currently this methos does not work correctly.
-     * The numbers in the byte array does not equal crcSum.getValue
-     */
+    * This method right now does not set the CRC, it just prints it out.
+    * Currently this method does not work correctly.
+    * The numbers in the byte array does not equal crcSum.getValue
+    */
     public void setCRC1() {
         CRC32 crcSum = new CRC32();
         crcSum.update(packet, 0, packet.length-5);
@@ -270,22 +286,31 @@ public class Packet
         crcSum.reset();
         //change to bytes to fit into 
     }
+    
+    /**
+     * Use this method if the current packet is a retransmission.
+     * This method sets the retry bit in Control to 1 (true);
+     * 
+     */
+    public void retransmition() {
+    	setControl(frameType, (short)1, sequenceNum);
+    }
 
 
     
     //Getters -----------------------------------------------------------------------------------------------------
     /**
-     * 
-     * @return the control of a current pacet
-     */
+    * 
+    * @return the control of a current pacet
+    */
     public int getControl() {
         return control;
     }
     
     
     /**
-     * @return the frameType of a given pack, this is a short
-     */
+    * @return the frameType of a given pack, this is a short
+    */
     public short getFrameType() {
         return frameType;
     }
@@ -293,62 +318,61 @@ public class Packet
 
 
     /**
-     * @return Whether this packet is a retransmission
-     * 1 if it is a retransmission
-     * 0 is this is not a retransmission
-     */
+    * @return Whether this packet is a retransmission
+    * 1 if it is a retransmission
+    * 0 is this is not a retransmission
+    */
     public short getRetry() {
         return retry;
     }
 
     /**
-     * @return the sequence number of this packet
-     */
+    * @return the sequence number of this packet
+    */
     public int getSequenceNum() {
 
         return sequenceNum;
     }
 
     /**
-     * 
-     * @return the destination address of this particular fram. packet[2] and packet[3]
-     */
-    public int getDesAddr() {
+    * 
+    * @return the destination address of this particular fram. packet[2] and packet[3]
+    */
+    public short getDesAddr() {
 
         return desAddr;
     }
 
     /**
-     * 
-     * @return the source Address with in the packet. packet[4] and packet[5]
-     */
-    public int getScrAddr() {
+    * 
+    * @return the source Address with in the packet. packet[4] and packet[5]
+    */
+    public short getScrAddr() {
         return scrAddr;
     }
 
     /**
-     * 
-     * @return the data with in this packet.
-     */
+    * 
+    * @return the data with in this packet.
+    */
     public byte[] getData() {
-
         return data;
     }
 
     /**
-     * Return
-     */
+    * Return
+    */
     public byte[] getPacket() { //based on how big the packet is... we manipulate from 0 control + addresses + data + crc;
         return packet;
     }
     
     /**
-     * Let's make life easier by doing this.
-     * 
-     * @param b1
-     * @param b2
-     * @return 
-     */
+    * Let's make life easier by doing this.
+    * 
+    * @param b1
+    * @param b2
+    * @return 
+    */
     public static short twoBytesToShort(byte b1, byte b2) {
         return (short) ((b1 << 8) | (b2 & 0xFF));
     }
@@ -363,14 +387,15 @@ public class Packet
      * 	- Source Address
      */
     public String niceToString() {
+    	String s = new String(data);
         String str = "";
-        str += "Control = " + getControl() + "\n";
-        str += "\tFrame type:\t" + getFrameType() + "\n";
+        str += "Control = " + control + "\n";
+        str += "\tFrame type:\t" + frameType + "\n";
         str += "\tRetry:\t\t" + retry + "\n";
-        str += "\tSeqNumber:\t" + getSequenceNum() + "\n";
+        str += "\tSeqNumber:\t" + sequenceNum + "\n";
         str += "DesAdd: " + desAddr + "\n";
         str += "SouAdd: " + scrAddr + "\n";
-        //str += "Data: " + data + "\n";//change...
+        str += "Data: " + s + "\n";//change...
         str += "CRC: " + CRC + "\n";
         return str;
     }

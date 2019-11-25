@@ -80,10 +80,13 @@ public class Sender implements Runnable{
     }
     
     private void sendPacket() {
-    	Packet PackettoSend = sendQueue.poll();
-    	PackettoSend.toString();
-		theRF.transmit(PackettoSend.getPacket());
-		System.out.println("i sent");
+    	if(sendQueue.peek() != null) {
+    		Packet PackettoSend = sendQueue.poll();
+        	System.out.println(PackettoSend.toString());
+    		theRF.transmit(PackettoSend.getPacket());
+    		System.out.println("i sent");
+    	}
+    	System.out.println("here");
     }
 	
 	
