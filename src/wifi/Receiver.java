@@ -51,8 +51,10 @@ public class Receiver implements Runnable{
 		this.ackQueue = ackQueue;
 	}
 	
-	private void sendACK(Packet packet) {
+	private void sendACK(Packet packet) { //sends an ack back to whoever send the packet to us
 		packet.setACK(); //change control bits
+		packet.setDesAddr(packet.scrAddr);
+		packet.setScrAddr(ourMAC);
 		//SIFS(); we should do this but...
 		System.out.println("Sending ACK");
 		theRF.transmit(packet.getPacket());
@@ -62,7 +64,7 @@ public class Receiver implements Runnable{
 	
 	
 	
-	private int toUs(byte[] packet) {
+	private int toUs(byte[] packet) { //sees if the packet was ment for us
 		return (short) ((packet[2] << 8) | (packet[3] & 0xFF));
 		
 	}
@@ -75,37 +77,27 @@ public class Receiver implements Runnable{
 		System.out.println("Receiver Thread Reporting For Duty!!");
 
 		while(true) { //loop to keep thread alive
-			if(theRF.dataWaiting()) {
+			if(theRF.dataWaiting()) { //checks if data is waiting.
 				byte[] IncomingByteArray = theRF.receive();
 				//Packet packet = new Packet();
 				Packet IncomingPacket;
-							
-				if(toUs(IncomingByteArray)==ourMAC || toUs(IncomingByteArray)==-1){
-					
-					IncomingPacket = new Packet(IncomingByteArray);
-					if(toUs(IncomingByteArray)==-1 && IncomingPacket.getFrameType()!=ACK){
-						sendACK(IncomingPacket);
-						System.out.println("isPacket");
-						DataQueue.add(IncomingPacket); //put packet into queue
-
-					}				
-					if(IncomingPacket.getFrameType()==ACK) {
+				IncomingPacket = new Packet(IncomingByteArray);
+				
+				if(toUs(IncomingByteArray)==ourMAC || toUs(IncomingByteArray)==-1){ //if the packet was ment for us
+					if(IncomingPacket.getFrameType()==ACK) { //if packet received was an ack
 						
-						System.out.println("is ACK");
-						ackQueue[IncomingPacket.getSequenceNum()] = true;
+						ackQueue[IncomingPacket.getSequenceNum()] = true; //tell sender we received an ack
 					}
-					if(toUs(IncomingByteArray)==-1) {
+					else if(toUs(IncomingByteArray)==ourMAC){ //if the message was meant for specifically us
+						sendACK(IncomingPacket); //send ACK
+						DataQueue.add(IncomingPacket); //put packet into queue
+
+					}
+					else if(toUs(IncomingByteArray)==-1) { //if it was an open message to all who will listen
 						DataQueue.add(IncomingPacket); //put packet into queue
 					}
-
 				}
-				else {
-					//System.out.println("notforus");
-				}
-			}	
-			
+			}				
 		}
-		
 	}
-	
 }

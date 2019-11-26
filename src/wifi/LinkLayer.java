@@ -120,6 +120,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 
 			output.println("I Received a Packet with " + packet.getPacket().length + " Bytes from " + packet.getScrAddr());
 			output.println(packet.niceToString());
+			output.println("Sending ACK");
 			return 0;
 	}
 

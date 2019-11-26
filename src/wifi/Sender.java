@@ -2,6 +2,7 @@
 
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.Random;
 
 import rf.RF;
 
@@ -20,6 +21,9 @@ public class Sender implements Runnable{
 	int backoffWindow;
 	int timeoutWindow = 20000;
 	private Packet packet;
+	int reTransmit = 0;
+	Random rand = new Random();
+
 
 
 	
@@ -51,8 +55,8 @@ public class Sender implements Runnable{
 	private void emptyWait(int backOff) { //waits the exponential back off time
 		
 		
-		while(backOff>0) {
-			if(theRF.inUse()==true) {
+		while(backOff>0) { //If our backof isnt done yet
+			if(theRF.inUse()==true) { //if rf in use
 				while(theRF.inUse()==true);
 				DIFS();
 			}
@@ -62,53 +66,58 @@ public class Sender implements Runnable{
 	        catch(InterruptedException ex){
 	            Thread.currentThread().interrupt();
 	        }
-	        backOff = backOff-1; //need to roll dice with new value
+	        backOff = backOff-1; //went through one interaction
 		}
 	}
 	
-    private void backOff(int backoff) { //
+    private void backOff(int backoff) { //handles the waiting till transmission is open
     	boolean sent = false;
     	while(sent==false) {
     		emptyWait(backoff);
     		DIFS();
     		if(theRF.inUse()==false) {
     			sendPacket();
-    			sent = true;
+    			sent = true; //we sent no longer need to be looping
     		}
     		else {
-    			//System.out.println("I waited: " + backoff);
-
-    			backoff = backoff * backoff;
+    			backoff = backoff * backoff; //Exponential backoff, need to fix to use frame size and not the number
     		}
     	}
     }
     
     
-    private void reTransmit() {
+    private void reTransmit() { //if send fails the irst time
     	try{
-            Thread.sleep(timeoutWindow); //start counting down back off
+            Thread.sleep(timeoutWindow); //wait for our timeout value
         }
         catch(InterruptedException ex){
             Thread.currentThread().interrupt();
         }
-		System.out.println(packet.getSequenceNum());
-		System.out.println(ackQueue[packet.getSequenceNum()]);
-    	if(ackQueue[packet.getSequenceNum()]==true) {
+    	if(ackQueue[packet.getSequenceNum()]==true) { //if we got an ack for our packet were done
     		return;
     	}
     	else {
-    		System.out.println("retransmitting");
-    		backOff(2);
+    		if(reTransmit>=theRF.dot11RetryLimit) { //retransmit limit reached
+    			reTransmit=0;
+    			System.out.println("Retry Limit Reached");
+    			return;
+    		}
+    		//System.out.println("retransmitting");
+
+    		reTransmit++;
+    		backOff(rand.nextInt(theRF.aCWmin)); //start trying to send again
     	}
     	//get seqNumber
     	
     }
     
     
-    private void sendPacket() {
-        	System.out.println(packet.toString());
+    private void sendPacket() { //sends the packet
+    	
     		theRF.transmit(packet.getPacket());
-    		reTransmit();
+    		if(packet.desAddr!=-1) {
+        		reTransmit();
+    		}
     }
 	
 	
@@ -123,16 +132,15 @@ public class Sender implements Runnable{
 				 packet = sendQueue.poll();
 				 if(theRF.inUse()==false){ //if there is no transmission you have the clear to transmit
 					 DIFS();
-					 if(theRF.inUse()==false) {
+					 if(theRF.inUse()==false) { //still not in use
 						 sendPacket();
 					 }
 					 else {
-						 backOff(2);
-					 }
-					 
+						 backOff(rand.nextInt(theRF.aCWmin)); //was in use so we start backing off
+					 } 
 				 }
 				 else {
-					backOff(2);
+					backOff(rand.nextInt(theRF.aCWmin)); //was in use so we start backing off
 				 }          
 		     }	 
 		}		
