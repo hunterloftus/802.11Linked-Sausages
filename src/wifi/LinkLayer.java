@@ -15,10 +15,13 @@ public class LinkLayer implements Dot11Interface, Runnable
 	private RF theRF;           // You'll need one of these eventually
 	private short ourMAC;       // Our MAC address
 	private PrintWriter output; // The output stream we'll write to
+	private static final int QueueCap = 4; //Cap on how many jobs we can take
+
 	private Boolean[] ackQueue = new Boolean[4096];
-	private Queue<Packet> sendQueue = new ArrayBlockingQueue<Packet>(1000); //make this a packet object
-	public static Queue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
+	private ArrayBlockingQueue<Packet> sendQueue = new ArrayBlockingQueue<Packet>(QueueCap); //make this a packet object
+	public static ArrayBlockingQueue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
 	short seqNumber;
+
 
 
 
@@ -43,8 +46,8 @@ public class LinkLayer implements Dot11Interface, Runnable
 		}
 		
 		
-		Receiver recv = new Receiver(theRF, ackQueue, DataQueue, ourMAC);
-		Sender sender = new Sender(theRF, ackQueue, sendQueue, ourMAC);
+		Receiver recv = new Receiver(theRF, ackQueue, DataQueue, ourMAC, output);
+		Sender sender = new Sender(theRF, ackQueue, sendQueue, ourMAC, output);
 		(new Thread(recv)).start();
 		(new Thread(sender)).start();
 		seqNumber = 0;
@@ -69,17 +72,9 @@ public class LinkLayer implements Dot11Interface, Runnable
 	 * of bytes to send.  See docs for full description.
 	 */
 	public int send(short dest, byte[] data, int len) {
-		/*
-		short[] ControlBits = Packet.getControlBits(data);
-		short frameType = ControlBits[0];
-		short retry = ControlBits[1];
-		short seqNumber = ControlBits[2];
-		short DestAddress = ControlBits[3];
-		short SourceAddress = ControlBits[4];
-		output.println("I sent: " + len + "Bytes of Data to " + DestAddress);
-		*/
-		
-		
+		if(sendQueue.size()>=QueueCap) {		
+			output.println("Dropping Job Queue full");
+		}
 		short frameType = 000;
 		short retry = 0;
 		
@@ -106,10 +101,16 @@ public class LinkLayer implements Dot11Interface, Runnable
 		Packet packet;
 		
 		while(DataQueue.isEmpty()) {
-			DIFS();	//wait difs as not to flood cpu time
+	        try{
+	            Thread.sleep(5); //wait some time to not flood cpu
+	            }
+	        
+	        catch(InterruptedException ex){
+	            Thread.currentThread().interrupt();
+	        }
 		}
-		
-			packet = DataQueue.poll();
+		try { 
+			packet = DataQueue.take();
 			//short[] ControlBits = Packet.getControlBits(packet.packet);
 			
 			
@@ -121,7 +122,12 @@ public class LinkLayer implements Dot11Interface, Runnable
 			output.println("I Received a Packet with " + packet.getPacket().length + " Bytes from " + packet.getScrAddr());
 			output.println(packet.niceToString());
 			output.println("Sending ACK");
-			return 0;
+		} catch (InterruptedException e) {
+			output.println("Recv is having a bad day");
+			return -1;
+		}
+			output.println("Received " + packet.data.length + " of Data");
+			return packet.data.length; // size of packet received
 	}
 
 	/**

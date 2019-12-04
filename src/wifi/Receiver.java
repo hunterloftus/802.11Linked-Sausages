@@ -4,6 +4,8 @@
 
  
 import java.util.Queue;
+import java.io.PrintWriter;
+
 import java.util.concurrent.ArrayBlockingQueue;
 
 import javax.print.attribute.standard.OutputDeviceAssigned;
@@ -11,8 +13,7 @@ import javax.print.attribute.standard.OutputDeviceAssigned;
 import rf.RF;
 
 public class Receiver implements Runnable{
-	
-	public Queue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
+	private ArrayBlockingQueue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
 	//this will end up being a packet object
 	
 	private RF theRF;
@@ -21,6 +22,7 @@ public class Receiver implements Runnable{
 	
 	short ControlByte;
 	short DestAddress;
+	private PrintWriter output; //GUI Thing
 	short SourceAddress;
 	short frameType;
 	short retry;
@@ -44,11 +46,12 @@ public class Receiver implements Runnable{
 	}
 	
 	
-	public Receiver(RF theRF, Boolean[] ackQueue, Queue<Packet> dataQueue, short ourMAC) {
+	public Receiver(RF theRF, Boolean[] ackQueue, ArrayBlockingQueue<Packet> dataQueue, short ourMAC, PrintWriter output) {
 		this.DataQueue = dataQueue;
 		this.ourMAC = ourMAC;
 		this.theRF = theRF;
 		this.ackQueue = ackQueue;
+		this.output = output;
 	}
 	
 	private void sendACK(Packet packet) { //sends an ack back to whoever send the packet to us
@@ -80,12 +83,10 @@ public class Receiver implements Runnable{
 			if(theRF.dataWaiting()) { //checks if data is waiting.
 				byte[] IncomingByteArray = theRF.receive();
 				//Packet packet = new Packet();
-				Packet IncomingPacket;
-				IncomingPacket = new Packet(IncomingByteArray);
+				Packet IncomingPacket = new Packet(IncomingByteArray);
 				
-				if(toUs(IncomingByteArray)==ourMAC || toUs(IncomingByteArray)==-1){ //if the packet was ment for us
+				if(toUs(IncomingByteArray)==ourMAC || toUs(IncomingByteArray)==-1){ //if the packet was meant for us
 					if(IncomingPacket.getFrameType()==ACK) { //if packet received was an ack
-						
 						ackQueue[IncomingPacket.getSequenceNum()] = true; //tell sender we received an ack
 					}
 					else if(toUs(IncomingByteArray)==ourMAC){ //if the message was meant for specifically us
