@@ -5,11 +5,8 @@
  
 import java.util.Queue;
 import java.io.PrintWriter;
-
 import java.util.concurrent.ArrayBlockingQueue;
-
 import javax.print.attribute.standard.OutputDeviceAssigned;
-
 import rf.RF;
 
 public class Receiver implements Runnable{
@@ -19,7 +16,6 @@ public class Receiver implements Runnable{
 	private RF theRF;
 	private Boolean[] ackQueue = new Boolean[4096];
 	private short ourMAC;       // Our MAC address
-	
 	short ControlByte;
 	short DestAddress;
 	private PrintWriter output; //GUI Thing
@@ -28,7 +24,6 @@ public class Receiver implements Runnable{
 	short retry;
 	short seqNumber;
     final short ACK = 0b001;
-
 	
 	int PacketLength;
 
@@ -39,7 +34,6 @@ public class Receiver implements Runnable{
         try{
             Thread.sleep(RF.aSIFSTime); //wait SIFS amount of time
         }
-        
         catch(InterruptedException ex){
             Thread.currentThread().interrupt();
         }
@@ -59,22 +53,19 @@ public class Receiver implements Runnable{
 		packet.setDesAddr(packet.scrAddr);
 		packet.setScrAddr(ourMAC);
 		//SIFS(); we should do this but...
-		System.out.println("Sending ACK");
-		theRF.transmit(packet.getPacket());
-		
-		
+		if(LinkLayer.debugMode==-1) {output.println("Sending ACK DebugMode: " + LinkLayer.debugMode);}
+		theRF.transmit(packet.getPacket());	
 	}
 	
 	
 	
 	private int toUs(byte[] packet) { //sees if the packet was ment for us
 		return (short) ((packet[2] << 8) | (packet[3] & 0xFF));
-		
 	}
 	
 	//receiver loop
-	
 	//send section for ACKS//AWKS
+	int count = 0; //remove at some point
 
 	public  void run() {
 		System.out.println("Receiver Thread Reporting For Duty!!");
@@ -90,9 +81,12 @@ public class Receiver implements Runnable{
 						ackQueue[IncomingPacket.getSequenceNum()] = true; //tell sender we received an ack
 					}
 					else if(toUs(IncomingByteArray)==ourMAC){ //if the message was meant for specifically us
+						
+						//hashMapLocation
+						System.out.println(count);
+						count++;
 						sendACK(IncomingPacket); //send ACK
 						DataQueue.add(IncomingPacket); //put packet into queue
-
 					}
 					else if(toUs(IncomingByteArray)==-1) { //if it was an open message to all who will listen
 						DataQueue.add(IncomingPacket); //put packet into queue
@@ -101,4 +95,7 @@ public class Receiver implements Runnable{
 			}				
 		}
 	}
+	
+	
+	
 }

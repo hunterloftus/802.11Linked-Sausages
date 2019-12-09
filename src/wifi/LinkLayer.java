@@ -1,6 +1,7 @@
  package wifi; 
 import java.io.PrintWriter;
 import java.util.Queue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import rf.RF;
@@ -20,20 +21,20 @@ public class LinkLayer implements Dot11Interface, Runnable
 	private Boolean[] ackQueue = new Boolean[4096];
 	private ArrayBlockingQueue<Packet> sendQueue = new ArrayBlockingQueue<Packet>(QueueCap); //make this a packet object
 	public static ArrayBlockingQueue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
-	short seqNumber;
-
-
-
-
-
+	public static short seqNumber;
+	//command variables
+    public static int debugMode = -1;//0 for nothing, -1 for debug mode.
+    public static int slotSelection = 0; //0 for random slot time, any number for Max window size.
+    public static int beaconInterval = -1; //-1 for no beacons, any number for interval timing.
+    public static long clockModifier = 0; //the difference between our clock and everyone else's.
+    
+    
 	/**
 	 * Constructor takes a MAC address and the PrintWriter to which our output will
 	 * be written.
 	 * @param ourMAC  MAC address
 	 * @param output  Output stream associated with GUI
-
  */
-	
 	public LinkLayer(short ourMAC, PrintWriter output) {
 		this.ourMAC = ourMAC;
 		this.output = output;      
@@ -53,27 +54,14 @@ public class LinkLayer implements Dot11Interface, Runnable
 		seqNumber = 0;
 	}
 	
-	
-	
-
-		/*
-	 	public LinkLayer(short ourMAC, PrintWriter output) {
-		this.ourMAC = ourMAC;
-		this.output = output;      
-		theRF = new RF(null, null);
-		output.println("LinkLayer: Constructor ran.");
-	}
-	*/
-	 
-	 
-
 	/**
 	 * Send method takes a destination, a buffer (array) of data, and the number
 	 * of bytes to send.  See docs for full description.
 	 */
 	public int send(short dest, byte[] data, int len) {
 		if(sendQueue.size()>=QueueCap) {		
-			output.println("Dropping Job Queue full");
+			output.println("Dropping Job, Queue full");
+			return 0;
 		}
 		short frameType = 000;
 		short retry = 0;
@@ -88,8 +76,6 @@ public class LinkLayer implements Dot11Interface, Runnable
 			seqNumber=0;
 		}
 		return len;
-		
-		
 	}
 
 	/**
@@ -112,10 +98,8 @@ public class LinkLayer implements Dot11Interface, Runnable
 		try { 
 			packet = DataQueue.take();
 			//short[] ControlBits = Packet.getControlBits(packet.packet);
-			
-			
 			//output.println("I Received " + packet.packet.length + "Bytes from " + ControlBits[4]);
-			t.setBuf(packet.packet);
+			t.setBuf(packet.getData());
 			t.setDestAddr(packet.desAddr);
 			t.setSourceAddr(packet.scrAddr);
 
@@ -143,22 +127,40 @@ public class LinkLayer implements Dot11Interface, Runnable
         try{
             Thread.sleep(wait); //wait DIFS amount of time
         }
-        
         catch(InterruptedException ex){
             Thread.currentThread().interrupt();
         }
-
     }
 	
 	/**
 	 * Passes command info to your link layer.  See docs for full description.
 	 */
 	public int command(int cmd, int val) {
-		output.println("LinkLayer: Sending command "+cmd+" with value "+val);
+		if(cmd==1) {
+			if(val==0||val==-1) {
+				debugMode=val;
+				return 0;
+			}
+			output.print("0 or -1 are the only acceptable answers");
+		}
+		if(cmd==2) {
+			slotSelection=val;
+		}
+		if(cmd==3) {
+			beaconInterval = val;
+		}
+		if(debugMode==-1) {output.println("LinkLayer: Sending command "+cmd+" with value "+val);}
+		
 		return 0;
 	}
-
-
+	
+	/**
+	 * 
+	 * 
+	 */
+	public int getDebug( ) {
+		return debugMode;
+	}
 
 	@Override
 	public void run() {
