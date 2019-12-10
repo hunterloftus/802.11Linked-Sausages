@@ -3,6 +3,7 @@ package wifi;
  
 import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
+import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  * This class represents CS325's modified 802.11 Frame Format
@@ -14,8 +15,7 @@ import java.util.zip.CRC32;
  * -------------------------------------------------
  * @students Anna, Hunter, Ana-Lea
  */
-public class Packet
-{
+public class Packet implements Comparable<Packet>{
 	private int control;
 	private short retry;
 	private short frameType;
@@ -249,6 +249,7 @@ public class Packet
             packet[i] = (byte)0xFF;
         }
     }
+
     
     /**
     * This method right now does not set the CRC, it just prints it out.
@@ -417,4 +418,8 @@ public class Packet
         str += "]";
         return str;
     }     
+    @Override
+	public int compareTo(Packet pA) {
+		return pA.frameType;
+	}
 }
