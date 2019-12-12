@@ -35,7 +35,7 @@ public class Packet implements Comparable<Packet>{
     final int DES_START = 2;
     final int SCR_START = 4;
     final int DATA_START = 6;
-    //final int CRC_START = packet.length - 4;
+    final int CRC_START;
     
     //Deletevvv
     final short DATA =      0b000;
@@ -51,6 +51,7 @@ public class Packet implements Comparable<Packet>{
      * Creates a Packet Object with nothing instantiated
      */
     public Packet() {
+    	CRC_START = packet.length - 4;
     	
     }
     
@@ -76,6 +77,7 @@ public class Packet implements Comparable<Packet>{
         setScrAddr(twoBytesToShort(incomingPacket[SCR_START], incomingPacket[SCR_START+1]));
         setDesAddr(twoBytesToShort(incomingPacket[DES_START], incomingPacket[DES_START + 1]));
         setData(incomingPacket);
+        CRC_START = packet.length - 4;
     } 
     
     /**
@@ -120,8 +122,9 @@ public class Packet implements Comparable<Packet>{
         setScrAddr(scrAddr);
         setDesAddr(desAddr);
         setData(data, len);
+        CRC_START = packet.length - 4;
         setCRC();	//Sets to all ones.
-        //setCRC1(); Doesn't work correctly
+        //setCRC1(); //Doesn't work correctly
     }
     //Setters for Packet Class -----------------------------------------------------------------
 
@@ -258,22 +261,18 @@ public class Packet implements Comparable<Packet>{
     */
     public void setCRC1() {
         CRC32 crcSum = new CRC32();
-        crcSum.update(packet, 0, packet.length-5);
+        crcSum.update(packet);
         CRCnum = crcSum.getValue();
         System.out.println("CRC value calculated: " + crcSum.getValue());
         bb.putLong(crcSum.getValue());
-        
         byte[] bbb = bb.array();
-        for(Byte b: bbb) {
-        	System.out.println(b);
-        	
-        }
         bb.flip();
         //byte[] bbb = bb.array();
         int start = bbb.length - 5;
         for(int i = 0; i < bbb.length; i ++) {
         	System.out.println("i: " + i );
         	System.out.println(bbb[i] & 0xFF);
+        	//packet[CRC_START+ i] = (byte)bbb[i];
         	
         }
         //We want the last four of bbb;

@@ -16,17 +16,21 @@ public class LinkLayer implements Dot11Interface, Runnable
 	private RF theRF;           // You'll need one of these eventually
 	private short ourMAC;       // Our MAC address
 	private PrintWriter output; // The output stream we'll write to
-	private static final int QueueCap = 4; //Cap on how many jobs we can take
+	public static final int QueueCap = 4; //Cap on how many jobs we can take
 
 	private Boolean[] ackQueue = new Boolean[4096];
 	private ArrayBlockingQueue<Packet> sendQueue = new ArrayBlockingQueue<Packet>(QueueCap); //make this a packet object
-	public static ArrayBlockingQueue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(1000);
+	public static ArrayBlockingQueue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(QueueCap);
 	public static short seqNumber;
 	//command variables
     public static int debugMode = -1;//0 for nothing, -1 for debug mode.
     public static int slotSelection = 0; //0 for random slot time, any number for Max window size.
     public static int beaconInterval = 20; //-1 for no beacons, any number for interval timing.
     public static long clockModifier = 0; //the difference between our clock and everyone else's.
+    public static long sendModifier = 2298;
+    public static final int SUCCESS = 1, UNSPECIFIED_ERROR = 2, RF_INIT_FAILED = 3, INSUFFICIENT_BUFFER_SPACE = 10;
+    public static final int TX_DELIVERED = 4, TX_FAILED = 5, BAD_ADDRESS = 7, ILLEGAL_ARGUMENT = 9;
+    public static int status;
     
     
 	/**
@@ -36,9 +40,17 @@ public class LinkLayer implements Dot11Interface, Runnable
 	 * @param output  Output stream associated with GUI
  */
 	public LinkLayer(short ourMAC, PrintWriter output) {
+		if(ourMAC>65536||ourMAC<1) {
+			status = BAD_ADDRESS;
+		}
 		this.ourMAC = ourMAC;
-		this.output = output;      
-		theRF = new RF(null, null);
+		this.output = output;     
+		try {
+			theRF = new RF(null, null);
+		}
+		catch(Exception e){
+			status = RF_INIT_FAILED;
+		}
 		output.println("LinkLayer: Constructor ran.");
 		//shoot of sender and receiver here
 		
@@ -52,6 +64,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 		(new Thread(recv)).start();
 		(new Thread(sender)).start();
 		seqNumber = 0;
+		status = SUCCESS;
 	}
 	
 	/**
@@ -59,7 +72,8 @@ public class LinkLayer implements Dot11Interface, Runnable
 	 * of bytes to send.  See docs for full description.
 	 */
 	public int send(short dest, byte[] data, int len) {
-		if(sendQueue.size()>=QueueCap) {		
+		if(sendQueue.size()>=QueueCap) {	
+			status = INSUFFICIENT_BUFFER_SPACE;
 			output.println("Dropping Job, Queue full");
 			return 0;
 		}
@@ -84,6 +98,9 @@ public class LinkLayer implements Dot11Interface, Runnable
 	 */
 	public int recv(Transmission t) {
 		//output.println("LinkLayer:blocking on recv()");
+		if(t==null) {
+			status = ILLEGAL_ARGUMENT;
+		}
 		Packet packet;
 		
 		while(DataQueue.isEmpty()) {
@@ -118,8 +135,8 @@ public class LinkLayer implements Dot11Interface, Runnable
 	 * Returns a current status code.  See docs for full description.
 	 */
 	public int status() {
-		output.println("LinkLayer: Faking a status() return value of 0");
-		return 0;
+		output.println("status: " + status);
+		return status;
 	}
 	
 	public static void updateClock(long ourTime, long theirTime) {
@@ -127,6 +144,11 @@ public class LinkLayer implements Dot11Interface, Runnable
 			long timeDif = theirTime-ourTime;
 			clockModifier += timeDif;
 			System.out.println("Syncing Time, New Modifier is: " + clockModifier);
+		}
+		else {
+			System.out.println("ourTime > theirTime, So we're not syncing the clock.");
+			System.out.println("Our Time: " + ourTime);
+			System.out.println("their Time: " + theirTime);
 		}
 		
 	}
@@ -139,6 +161,12 @@ public class LinkLayer implements Dot11Interface, Runnable
         catch(InterruptedException ex){
             Thread.currentThread().interrupt();
         }
+		while(true) {
+			if(theRF.clock()+LinkLayer.clockModifier%100!=0||theRF.clock()+LinkLayer.clockModifier%100!=50) {
+				System.out.println("Time after DIFS:" + theRF.clock()+LinkLayer.clockModifier);
+				break;
+			}
+		}
     }
 	
 	/**

@@ -51,7 +51,12 @@ public class Sender implements Runnable {
 		catch (InterruptedException ex) {
 			Thread.currentThread().interrupt();
 		}
-
+		while(true) {
+			if(theRF.clock()+LinkLayer.clockModifier%100!=0||theRF.clock()+LinkLayer.clockModifier%100!=50) {
+				System.out.println("Time after DIFS:" + theRF.clock()+LinkLayer.clockModifier);
+				break;
+			}
+		}
 	}
 
 	private void wait(int wait) {
@@ -59,6 +64,11 @@ public class Sender implements Runnable {
 			Thread.sleep(wait); // wait DIFS amount of time
 		} catch (InterruptedException ex) {
 			Thread.currentThread().interrupt();
+		}
+		while(true) {
+			if(theRF.clock()+LinkLayer.clockModifier%100!=0||theRF.clock()+LinkLayer.clockModifier%100!=50) {
+				break;
+			}
 		}
 	}
 
@@ -109,11 +119,14 @@ public class Sender implements Runnable {
 		if (ackQueue[packet.getSequenceNum()] == true) { // if we got an ack for our packet were done
 			backOffWindow = theRF.aCWmin;// reset windows
 			timeoutWindow = STARTING_TIMEOUT_WINDOW;
+			LinkLayer.status = LinkLayer.TX_DELIVERED;
 			return;
 		} else {
 			if (reTransmit >= theRF.dot11RetryLimit) { // retransmit limit reached
 				reTransmit = 0;
 				System.out.println("Retry Limit Reached");
+				LinkLayer.status = LinkLayer.TX_FAILED;
+
 				packet = null;
 				return;
 			}
@@ -127,26 +140,29 @@ public class Sender implements Runnable {
 
 	private void createBeacon(long currentTime) {
 
+		
+		System.out.println("ourClock Before Beacon Building:" + theRF.clock());
+		
 		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-		buffer.putLong(currentTime);
+		buffer.putLong(currentTime + LinkLayer.clockModifier);
 		byte[] byteCurrentTime = buffer.array();
-		//System.out.println(byteCurrentTime.toString());
+		//for(byte b: byteCurrentTime) {
+		//	System.out.println(b & 0xFF);
+		//}
+		//System.out.println("currentTime" + currentTime);
+		//System.out.println("HERE IS THEY BYTE ARRAY: " + byteCurrentTime.length);
 		
-		
-		
-		System.out.println("Im otta here");
-		System.out.println("currentTime" + currentTime);
-		System.out.println("HERE IS THEY BYTE ARRAY: " + byteCurrentTime.length);
 		
 		packet = new Packet((short) 0b010, (short) 0, LinkLayer.seqNumber, (short) -1, ourMAC, byteCurrentTime, byteCurrentTime.length);
 
 		//System.out.println(packet.niceToString());
 
 		LinkLayer.seqNumber++;
-		System.out.println("Created Beacon: " + packet);
+		System.out.println("ourClock after Beacon Building:" + theRF.clock());
+
 
 	}
-
+	
 	private void sendPacket() { // sends the packet
 		if (packet != null) {
 			theRF.transmit(packet.getPacket());
@@ -170,7 +186,7 @@ public class Sender implements Runnable {
 			// }
 
 			while (packet == null) {
-				long modifiedTime = theRF.clock() + LinkLayer.clockModifier;
+				long modifiedTime = theRF.clock() + LinkLayer.sendModifier;
 				if (LinkLayer.beaconInterval != -1) {
 
 					if (lastBeaconTimeStamp + (LinkLayer.beaconInterval * 1000) <= modifiedTime) {
