@@ -25,7 +25,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 	//command variables
     public static int debugMode = -1;//0 for nothing, -1 for debug mode.
     public static int slotSelection = 0; //0 for random slot time, any number for Max window size.
-    public static int beaconInterval = 8; //-1 for no beacons, any number for interval timing.
+    public static int beaconInterval = 10; //-1 for no beacons, any number for interval timing.
     public static long clockModifier = 0; //the difference between our clock and everyone else's.
     
     
@@ -120,6 +120,15 @@ public class LinkLayer implements Dot11Interface, Runnable
 	public int status() {
 		output.println("LinkLayer: Faking a status() return value of 0");
 		return 0;
+	}
+	
+	public static void updateClock(long ourTime, long theirTime) {
+		if(theirTime>ourTime) {
+			long timeDif = theirTime-ourTime;
+			clockModifier += timeDif;
+			System.out.println("Syncing Time, New Modifier is: " + clockModifier);
+		}
+		
 	}
 
     private void DIFS(){

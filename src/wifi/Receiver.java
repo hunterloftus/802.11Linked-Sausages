@@ -6,7 +6,7 @@ package wifi;
 import java.util.HashMap;
 import java.util.Queue;
 import java.io.PrintWriter;
-
+import java.nio.ByteBuffer;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import javax.print.attribute.standard.OutputDeviceAssigned;
@@ -146,7 +146,17 @@ public class Receiver implements Runnable{
 						//Check if the their MAC address was in the map
 					}
 					else if(toUs(IncomingByteArray)==-1) { //if it was an open message to all who will listen
-						DataQueue.add(IncomingPacket); //put packet into queue
+						if(IncomingPacket.getFrameType()==0b010) { //if its a beacon
+							System.out.println("Received Beaon");
+							long ourTime = LinkLayer.clockModifier + theRF.clock();
+							ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+							buffer.put(IncomingPacket.getData());
+							long theirTime = buffer.getLong();
+							LinkLayer.updateClock(ourTime, theirTime);
+						}
+						else {
+							DataQueue.add(IncomingPacket); //put packet into queue
+						}
 					}
 				}
 			//}				
