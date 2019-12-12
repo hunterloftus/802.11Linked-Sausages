@@ -146,21 +146,33 @@ public class Receiver implements Runnable{
 					}
 					else if(toUs(IncomingByteArray)==-1) { //if it was an open message to all who will listen
 						if(IncomingPacket.getFrameType()==0b010) { //if its a beacon
+							
+							
 							DataQueue.add(IncomingPacket); //put packet into queue
 							byte[] data = new byte[8];
+							System.out.println();
 							System.out.println("Received Beacon");
 							long ourTime = LinkLayer.clockModifier + theRF.clock();
-							ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+							
+							System.out.println("InPack: "+IncomingPacket);
 							data = IncomingPacket.getData();
-							for(int i = 0; i<data.length; i++) {
-								System.out.print(data[i]);
+							//System.out.println("We are printing out the data");
+							//for(int i = 0; i<data.length; i++) {
+							//	System.out.print((data[i] & 0xFF) + ", ");
+							//}
+							
+							
+							long theirTime = 0;
+							for (int i = 0; i < data.length; i++)
+							{
+								theirTime = (theirTime << 8) + (data[i] & 0xff);
 							}
-							System.out.println("dataLength: " + data.length);
-							//System.out.println("Data: " + (data).toString());
-							//buffer.addLong(data);
+							//System.out.println();
+							//System.out.println("theirTime: " + theirTime);
+						//	System.out.println();
 							//buffer.put(0, data);
 							//System.out.println("Their Time: " + (long)theirTime);
-							//LinkLayer.updateClock(ourTime, theirTime);
+							LinkLayer.updateClock(ourTime, theirTime);
 							
 						}
 						else {

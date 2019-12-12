@@ -129,6 +129,11 @@ public class LinkLayer implements Dot11Interface, Runnable
 			clockModifier += timeDif;
 			System.out.println("Syncing Time, New Modifier is: " + clockModifier);
 		}
+		else {
+			System.out.println("ourTime > theirTime, So we're not syncing the clock.");
+			System.out.println("Our Time: " + ourTime);
+			System.out.println("their Time: " + theirTime);
+		}
 		
 	}
 

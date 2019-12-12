@@ -130,23 +130,21 @@ public class Sender implements Runnable {
 		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
 		buffer.putLong(currentTime);
 		byte[] byteCurrentTime = buffer.array();
-		//System.out.println(byteCurrentTime.toString());
-		
-		
-		
-		System.out.println("Im otta here");
-		System.out.println("currentTime" + currentTime);
-		System.out.println("HERE IS THEY BYTE ARRAY: " + byteCurrentTime.length);
+		//for(byte b: byteCurrentTime) {
+		//	System.out.println(b & 0xFF);
+		//}
+		//System.out.println("currentTime" + currentTime);
+		//System.out.println("HERE IS THEY BYTE ARRAY: " + byteCurrentTime.length);
 		
 		packet = new Packet((short) 0b010, (short) 0, LinkLayer.seqNumber, (short) -1, ourMAC, byteCurrentTime, byteCurrentTime.length);
 
 		//System.out.println(packet.niceToString());
 
 		LinkLayer.seqNumber++;
-		System.out.println("Created Beacon: " + packet);
+		System.out.println("Created Beacon: " + packet.toString());
 
 	}
-
+	
 	private void sendPacket() { // sends the packet
 		if (packet != null) {
 			theRF.transmit(packet.getPacket());
