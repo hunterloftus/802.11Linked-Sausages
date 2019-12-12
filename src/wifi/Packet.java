@@ -71,12 +71,12 @@ public class Packet implements Comparable<Packet>{
 	 * @param incomingPacket a byte array
 	 */
     public Packet(byte[] incomingPacket) {    	
-    	//packet = new byte[incomingPacket.length];
     	packet = incomingPacket;
     	setControl(incomingPacket[CONTROL_START], incomingPacket[CONTROL_START + 1]);
         setScrAddr(twoBytesToShort(incomingPacket[SCR_START], incomingPacket[SCR_START+1]));
         setDesAddr(twoBytesToShort(incomingPacket[DES_START], incomingPacket[DES_START + 1]));
         setData(incomingPacket);
+        
         CRC_START = packet.length - 4;
     } 
     
@@ -123,8 +123,8 @@ public class Packet implements Comparable<Packet>{
         setDesAddr(desAddr);
         setData(data, len);
         CRC_START = packet.length - 4;
-        setCRC();	//Sets to all ones.
-        //setCRC1(); //Doesn't work correctly
+        //setCRC();	//Sets to all ones.
+        setCRC1(); //Works work correctly
     }
     //Setters for Packet Class -----------------------------------------------------------------
 
@@ -162,8 +162,6 @@ public class Packet implements Comparable<Packet>{
         this.frameType = frameType;
         this.retry = retry;
         this.sequenceNum = sequenceNum;
-        
-        //To implement - limit on sequence number?
         
         byte holderByte = (byte)(frameType);        
         
@@ -229,15 +227,9 @@ public class Packet implements Comparable<Packet>{
      */
     public void setData(byte[] incomingPacket) {
     	byte[] data = new byte[incomingPacket.length - OVERHEAD_SUM];
-    	//byte[] data = new byte[incomingPacket.length];
-    	//System.out.println(tempArray.length);
-    	//packet is already set, now I need to set the data.
     	for(int i = 0; i < data.length; i++) {
     		//System.out.println("i at: " + i);
     		data[i] = incomingPacket[i + DATA_START];
-    		//System.out.println("I want to die " + incomingPacket[i + DATA_START]);
-    		
-            //packet[i + DATA_START] = data[i];
         } 
     	this.data = data;
     }
@@ -255,36 +247,76 @@ public class Packet implements Comparable<Packet>{
 
     
     /**
-    * This method right now does not set the CRC, it just prints it out.
-    * Currently this method does not work correctly.
-    * The numbers in the byte array does not equal crcSum.getValue
+    * This method works :D it sets the CRC correctly.
     */
     public void setCRC1() {
         CRC32 crcSum = new CRC32();
-        crcSum.update(packet);
+        byte[] copyOfPacket = new byte[packet.length - 4];
+        
+        //Copy control, dest add, sou add, and data to a new array
+        for(int i = 0; i < copyOfPacket.length; i++) {
+        	copyOfPacket[i] = packet[i];
+        }
+        
+        
+        crcSum.update(copyOfPacket);
         CRCnum = crcSum.getValue();
-        System.out.println("CRC value calculated: " + crcSum.getValue());
-        bb.putLong(crcSum.getValue());
-        byte[] bbb = bb.array();
-        bb.flip();
-        //byte[] bbb = bb.array();
-        int start = bbb.length - 5;
-        for(int i = 0; i < bbb.length; i ++) {
-        	System.out.println("i: " + i );
-        	System.out.println(bbb[i] & 0xFF);
-        	//packet[CRC_START+ i] = (byte)bbb[i];
-        	
-        }
-        //We want the last four of bbb;
         
-        int packOffSet = packet.length - 5;
-        for(int i = packOffSet; i < packet.length; i++){
-            packet[i] = (byte)(bbb[start]);
-            start++;
-        }
+        byte[] thisCRC = longToBytes(CRCnum);
         
-        crcSum.reset();
-        //change to bytes to fit into 
+        //I TRIED to put this in a for loop but I swear
+        packet[packet.length - 4] = thisCRC[4];
+        packet[packet.length - 3] = thisCRC[5];
+        packet[packet.length - 2] = thisCRC[6];
+        packet[packet.length - 1] = thisCRC[7];
+        //sorry:(
+        
+        
+        crcSum.reset(); //important
+    }
+    
+    /**
+     * Compared a received packet's CRC to the calculated CRC to the current packet
+     * 
+     * @return true if the calculated CRC is the same as the given CRC in the recieved packet.
+     */
+    public boolean checkCRC() {
+    	setCRC1(); //find out the CRC of this packet
+    	
+    	//need to extract the last four bytes
+    	byte[] theirCRC = new byte[4];
+    	theirCRC[0] = packet[packet.length - 4];
+    	theirCRC[1] = packet[packet.length - 3];
+    	theirCRC[2] = packet[packet.length - 2];
+    	theirCRC[3] = packet[packet.length - 1];
+    	
+    	long incomingCRC = 0;
+		for (int i = 0; i < theirCRC.length; i++)
+		{
+			incomingCRC = (incomingCRC << 8) + (theirCRC[i] & 0xff);
+		}
+		
+		if(CRCnum == incomingCRC) {
+			System.out.println("GOOD CRC");
+			return true;
+		}
+		System.out.println("BAD CRC");
+    	
+    	return false;
+    }
+    
+    /**
+     * 
+     * @param l
+     * @return
+     */
+    public static byte[] longToBytes(long l) {
+        byte[] result = new byte[8];
+        for (int i = 7; i >= 0; i--) {
+            result[i] = (byte)(l & 0xFF);
+            l >>= 8;
+        }
+        return result;
     }
     
     /**

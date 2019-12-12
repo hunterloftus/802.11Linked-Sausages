@@ -128,7 +128,9 @@ public class Sender implements Runnable {
 	private void createBeacon(long currentTime) {
 
 		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-		buffer.putLong(currentTime);
+		int transitionTime = 4461;
+		int packetBuilding = 0;
+		buffer.putLong(currentTime + transitionTime + packetBuilding); // add clock modifier
 		byte[] byteCurrentTime = buffer.array();
 		//for(byte b: byteCurrentTime) {
 		//	System.out.println(b & 0xFF);
@@ -141,7 +143,7 @@ public class Sender implements Runnable {
 		//System.out.println(packet.niceToString());
 
 		LinkLayer.seqNumber++;
-		System.out.println("Created Beacon: " + packet.toString());
+		//System.out.println("Created Beacon: " + packet.toString());
 
 	}
 	

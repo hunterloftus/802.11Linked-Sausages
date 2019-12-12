@@ -75,12 +75,6 @@ public class Receiver implements Runnable{
 	}
 	
 	
-	
-	
-
-	
-	
-	
 	private boolean checkSeqNum(Packet p) {
 		boolean ordered = false;
 		int val = 0;
@@ -125,10 +119,11 @@ public class Receiver implements Runnable{
 					if(IncomingPacket.getSequenceNum()==lastSeqNum) {	
 					}
 				}
-				if(toUs(IncomingByteArray)==ourMAC || toUs(IncomingByteArray)==-1){ //if the packet was meant for us
+				if((toUs(IncomingByteArray)==ourMAC || toUs(IncomingByteArray)==-1) && IncomingPacket.checkCRC()){ //if the packet was meant for us
 					if(IncomingPacket.getFrameType()==ACK) { //if packet received was an ack
 						ackQueue[IncomingPacket.getSequenceNum()] = true; //tell sender we received an ack
 					}
+					
 					else if(toUs(IncomingByteArray)==ourMAC){ //if the message was meant for specifically us
 						sendACK(IncomingPacket); //send ACK
 						DataQueue.add(IncomingPacket); //put packet into queue
@@ -150,8 +145,8 @@ public class Receiver implements Runnable{
 							
 							DataQueue.add(IncomingPacket); //put packet into queue
 							byte[] data = new byte[8];
-							System.out.println();
-							System.out.println("Received Beacon");
+							//System.out.println();
+							//System.out.println("Received Beacon");
 							long ourTime = LinkLayer.clockModifier + theRF.clock();
 							
 							System.out.println("InPack: "+IncomingPacket);
@@ -167,6 +162,9 @@ public class Receiver implements Runnable{
 							{
 								theirTime = (theirTime << 8) + (data[i] & 0xff);
 							}
+							//Have to add depacket time
+							
+							
 							//System.out.println();
 							//System.out.println("theirTime: " + theirTime);
 						//	System.out.println();
@@ -178,6 +176,11 @@ public class Receiver implements Runnable{
 						else {
 							DataQueue.add(IncomingPacket); //put packet into queue
 						}
+					}
+				}
+				else {
+					if((toUs(IncomingByteArray)==ourMAC || toUs(IncomingByteArray)==-1) && !(IncomingPacket.checkCRC())) {
+						System.out.println("We encontered a bad CRC!");
 					}
 				}
 			//}				
