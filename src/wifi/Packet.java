@@ -410,5 +410,10 @@ public class Packet
         }
         str += "]";
         return str;
-    }     
+    }
+
+	public void setACK() {
+		// TODO Auto-generated method stub
+		
+	}     
 }
