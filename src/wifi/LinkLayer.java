@@ -15,7 +15,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 {
 	private RF theRF;           // You'll need one of these eventually
 	private short ourMAC;       // Our MAC address
-	private PrintWriter output; // The output stream we'll write to
+	private static PrintWriter output; // The output stream we'll write to
 	public static final int QueueCap = 4; //Cap on how many jobs we can take
 
 	private Boolean[] ackQueue = new Boolean[4096];
@@ -23,7 +23,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 	public static ArrayBlockingQueue<Packet> DataQueue = new ArrayBlockingQueue<Packet>(QueueCap);
 	public static short seqNumber;
 	//command variables
-    public static int debugMode = -1;//0 for nothing, -1 for debug mode.
+    public static int debugMode = 0;//0 for nothing, -1 for debug mode.
     public static int slotSelection = 0; //0 for random slot time, any number for Max window size.
     public static int beaconInterval = 20; //-1 for no beacons, any number for interval timing.
     public static long clockModifier = 0; //the difference between our clock and everyone else's.
@@ -83,7 +83,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 		Packet packet = new Packet(frameType, retry, seqNumber, dest, ourMAC, data, len);
 		output.println("I sent: " + len + " Bytes of Data to " + packet.getDesAddr());
 		sendQueue.add(packet);
-		output.println(packet.toString());
+		if(debugMode==-1) {output.println(packet.toString());}
 		
 		seqNumber++;
 		if(seqNumber>=4098) {
@@ -121,13 +121,12 @@ public class LinkLayer implements Dot11Interface, Runnable
 			t.setSourceAddr(packet.scrAddr);
 
 			output.println("I Received a Packet with " + packet.getPacket().length + " Bytes from " + packet.getScrAddr());
-			output.println(packet.niceToString());
+			if(LinkLayer.debugMode==-1) {output.println(packet.niceToString());}
 			output.println("Sending ACK");
 		} catch (InterruptedException e) {
 			output.println("Recv is having a bad day");
 			return -1;
 		}
-			output.println("Received " + packet.data.length + " of Data");
 			return packet.data.length; // size of packet received
 	}
 
@@ -143,12 +142,10 @@ public class LinkLayer implements Dot11Interface, Runnable
 		if(theirTime>ourTime) {
 			long timeDif = theirTime-ourTime;
 			clockModifier += timeDif;
-			System.out.println("Syncing Time, New Modifier is: " + clockModifier);
+			if(LinkLayer.debugMode==-1) {output.println("Syncing Time, New Modifier is: " + clockModifier);}
 		}
 		else {
-			System.out.println("ourTime > theirTime, So we're not syncing the clock.");
-			System.out.println("Our Time: " + ourTime);
-			System.out.println("their Time: " + theirTime);
+			if(LinkLayer.debugMode==-1){output.println("ourTime > theirTime, So we're not syncing the clock.");}
 		}
 		
 	}
@@ -163,7 +160,6 @@ public class LinkLayer implements Dot11Interface, Runnable
         }
 		while(true) {
 			if(theRF.clock()+LinkLayer.clockModifier%100!=0||theRF.clock()+LinkLayer.clockModifier%100!=50) {
-				System.out.println("Time after DIFS:" + theRF.clock()+LinkLayer.clockModifier);
 				break;
 			}
 		}
@@ -186,7 +182,7 @@ public class LinkLayer implements Dot11Interface, Runnable
 		if(cmd==3) {
 			beaconInterval = val;
 		}
-		if(debugMode==-1) {output.println("LinkLayer: Sending command "+cmd+" with value "+val);}
+		output.println("LinkLayer: Sending command "+cmd+" with value "+val);
 		
 		return 0;
 	}
