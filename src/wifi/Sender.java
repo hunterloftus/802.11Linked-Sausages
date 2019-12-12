@@ -114,7 +114,7 @@ public class Sender implements Runnable {
 			if (reTransmit >= theRF.dot11RetryLimit) { // retransmit limit reached
 				reTransmit = 0;
 				System.out.println("Retry Limit Reached");
-				packet=null;
+				packet = null;
 				return;
 			}
 			System.out.println("ReTransmit");
@@ -130,25 +130,32 @@ public class Sender implements Runnable {
 		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
 		buffer.putLong(currentTime);
 		byte[] byteCurrentTime = buffer.array();
+		//System.out.println(byteCurrentTime.toString());
 		
 		
-		Packet localPacket = new Packet((short) 0b010, (short) 0, LinkLayer.seqNumber, (short) -1, ourMAC, byteCurrentTime, byteCurrentTime.length);
-		packet = localPacket;
+		
+		System.out.println("Im otta here");
+		System.out.println("currentTime" + currentTime);
+		System.out.println("HERE IS THEY BYTE ARRAY: " + byteCurrentTime.length);
+		
+		packet = new Packet((short) 0b010, (short) 0, LinkLayer.seqNumber, (short) -1, ourMAC, byteCurrentTime, byteCurrentTime.length);
+
+		//System.out.println(packet.niceToString());
+
 		LinkLayer.seqNumber++;
-		System.out.println("Created Beacon");
+		System.out.println("Created Beacon: " + packet);
 
 	}
 
 	private void sendPacket() { // sends the packet
-		if(packet != null) {
+		if (packet != null) {
 			theRF.transmit(packet.getPacket());
-		
-		
-		if (packet.desAddr != -1) {
-			AwaitingAck();
+
+			if (packet.desAddr != -1) {
+				AwaitingAck();
+			}
 		}
-		}
-		packet=null;
+		packet = null;
 	}
 
 	long lastBeaconTimeStamp = 0;
@@ -158,43 +165,24 @@ public class Sender implements Runnable {
 		System.out.println("Sender Thread Reporting For Duty!!");
 		while (true) {// keeps the thread moving
 
-			//if (sendQueue.isEmpty() == true) {
-				//DIFS(); // wait some time as not to crowd cpu
-			//}
-			
-			
-			while(packet==null) {
+			// if (sendQueue.isEmpty() == true) {
+			// DIFS(); // wait some time as not to crowd cpu
+			// }
+
+			while (packet == null) {
 				long modifiedTime = theRF.clock() + LinkLayer.clockModifier;
-				
-				if (lastBeaconTimeStamp + (LinkLayer.beaconInterval * 1000) <= modifiedTime) {
-					createBeacon(modifiedTime);
-					lastBeaconTimeStamp = modifiedTime;
+				if (LinkLayer.beaconInterval != -1) {
+
+					if (lastBeaconTimeStamp + (LinkLayer.beaconInterval * 1000) <= modifiedTime) {
+						createBeacon(modifiedTime);
+						lastBeaconTimeStamp = modifiedTime;
+					}
 				}
-				if(sendQueue.peek()!=null) {
+				if (sendQueue.peek() != null) {
 					packet = sendQueue.poll();
 					System.out.println("Send Packet");
-				}	
+				}
 			}
-			
-			
-			
-//			if (LinkLayer.beaconInterval != -1) { // Beacon Path
-//				if (lastBeaconTimeStamp + (LinkLayer.beaconInterval * 1000) <= modifiedTime) { // we have to send a
-//																								// beacon
-//					BeaconsTurn = true;
-//					System.out.println("Last BTS: " + lastBeaconTimeStamp);
-//					lastBeaconTimeStamp = modifiedTime;
-//					System.out.println("New BTS: " + lastBeaconTimeStamp);
-//					System.out.println("Modified Time: " + modifiedTime);
-//				}
-//			}
-//			try {
-//				if (!BeaconsTurn) {
-//				}
-//			} catch (InterruptedException e) {
-//				output.println("Send Queue Error");
-//			}
-					
 			if (theRF.inUse() == false) { // if there is no transmission you have the clear to transmit
 				DIFS();
 				if (theRF.inUse() == false) { // ll not in use

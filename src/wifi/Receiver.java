@@ -142,17 +142,26 @@ public class Receiver implements Runnable{
 							System.out.println("Here1");
 						}
 						
-						
 						//Check if the their MAC address was in the map
 					}
 					else if(toUs(IncomingByteArray)==-1) { //if it was an open message to all who will listen
 						if(IncomingPacket.getFrameType()==0b010) { //if its a beacon
-							System.out.println("Received Beaon");
+							DataQueue.add(IncomingPacket); //put packet into queue
+							byte[] data = new byte[8];
+							System.out.println("Received Beacon");
 							long ourTime = LinkLayer.clockModifier + theRF.clock();
 							ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-							buffer.put(IncomingPacket.getData());
-							long theirTime = buffer.getLong();
-							LinkLayer.updateClock(ourTime, theirTime);
+							data = IncomingPacket.getData();
+							for(int i = 0; i<data.length; i++) {
+								System.out.print(data[i]);
+							}
+							System.out.println("dataLength: " + data.length);
+							//System.out.println("Data: " + (data).toString());
+							//buffer.addLong(data);
+							buffer.put(0, data);
+							//System.out.println("Their Time: " + (long)theirTime);
+							//LinkLayer.updateClock(ourTime, theirTime);
+							
 						}
 						else {
 							DataQueue.add(IncomingPacket); //put packet into queue
