@@ -1,1 +1,1 @@
-Anna Test123 wow
+This is an 802.11 Link Layer built upon a simulated radio frequency. It goes through the process of building packets with a message inputted from the user and sends that message over the air. Following the 802.11 exponential back off rules so we don't cause congestion or interrupt other consoles using the air. If a message is received it will depack it and display the message and update the clock if necessary. 
